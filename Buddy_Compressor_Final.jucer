@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="ZyQwS7" name="Buddy_Compressor_Final" projectType="guiapp"
+              useAppConfig="0" addUsingNamespaceToJuceHeader="0" displaySplashScreen="1"
+              jucerFormatVersion="1">
+  <MAINGROUP id="gGM5uQ" name="Buddy_Compressor_Final">
+    <GROUP id="{603FF16C-782C-061F-92F9-E1CA6FAA6C7C}" name="Source">
+      <GROUP id="{6FF290D0-1B84-78A7-1EED-C6363F9B95F2}" name="Control_Sliders">
+        <FILE id="lLd86o" name="Gate_Sliders.h" compile="0" resource="0" file="Source/Gate_Sliders.h"/>
+      </GROUP>
+      <FILE id="hvG77B" name="Slider_Attachment.h" compile="0" resource="0"
+            file="Source/Slider_Attachment.h"/>
+      <FILE id="QObFvb" name="Global_Operations.cpp" compile="1" resource="0"
+            file="Source/Global_Operations.cpp"/>
+      <FILE id="rub9fR" name="Global_Operations.h" compile="0" resource="0"
+            file="Source/Global_Operations.h"/>
+      <FILE id="Sy1JXH" name="ParamsMap.h" compile="0" resource="0" file="Source/ParamsMap.h"/>
+      <FILE id="GjLBwi" name="dsp_fucntions.cpp" compile="1" resource="0"
+            file="Source/dsp_fucntions.cpp"/>
+      <FILE id="H61LRa" name="dsp_fucntions.h" compile="0" resource="0" file="Source/dsp_fucntions.h"/>
+      <GROUP id="{FCAC341E-A8B0-01C4-527F-9C885C67D8DA}" name="ExtraComponents">
+        <FILE id="BBEqe1" name="MenuBar.cpp" compile="1" resource="0" file="Source/MenuBar.cpp"/>
+        <FILE id="yj5DLS" name="MenuBar.h" compile="0" resource="0" file="Source/MenuBar.h"/>
+        <FILE id="ynxoJr" name="Meter.h" compile="0" resource="0" file="Source/Meter.h"/>
+        <FILE id="X71Toj" name="Placeholder_Comp.h" compile="0" resource="0"
+              file="Source/Placeholder_Comp.h"/>
+        <FILE id="JVShwU" name="Waveform.h" compile="0" resource="0" file="Source/Waveform.h"/>
+      </GROUP>
+      <GROUP id="{C09FA3E9-7C1C-C49D-F937-553662B2CE6E}" name="Assets">
+        <FILE id="gx7nTc" name="Metal009_4K-JPG_Color.jpg" compile="0" resource="1"
+              file="Assets/Metal009_4K-JPG_Color.jpg"/>
+      </GROUP>
+      <FILE id="g38g7w" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
+      <FILE id="IlPygk" name="MainComponent.h" compile="0" resource="0" file="Source/MainComponent.h"/>
+      <FILE id="Czvr0G" name="MainComponent.cpp" compile="1" resource="0"
+            file="Source/MainComponent.cpp"/>
+    </GROUP>
+  </MAINGROUP>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+  </MODULES>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
+  <EXPORTFORMATS>
+    <VS2022 targetFolder="Builds/VisualStudio2022">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="Buddy_Compressor_Final"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="Buddy_Compressor_Final"
+                       fastMath="0"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../../JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="../../../JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../../JUCE/modules"/>
+        <MODULEPATH id="juce_dsp" path="../../../JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="../../../JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../../JUCE/modules"/>
+      </MODULEPATHS>
+    </VS2022>
+  </EXPORTFORMATS>
+</JUCERPROJECT>
