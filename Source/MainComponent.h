@@ -7,6 +7,11 @@
 #include "Waveform.h"
 #include "Meter.h"
 #include "Gate_Sliders.h"
+#include "APCompressor_Sliders.h"
+#include "LB_Multiband_Controls.h"
+#include "MB_Multiband_Controls.h"
+#include "HP_Multiband_Controls.h"
+#include "FrequencySliders.h"
 
 //=============================================================================
 
@@ -143,6 +148,11 @@ private:
     GUI::customLnF LNF;
 
     GateSliders gateSliderComp;
+    APCompressorSliders apCompressorSliderComp;
+    HighBandCompSliders hbCompressorSliderComp;
+    MidBandCompSliders  mbCompressorSliderComp;
+    LowBandCompSliders  lbCompressorSliderComp;
+    FrequencySliders freqComp;
     Placeholder input, preset, controls, output, buttons, slida;
 
     //SliderLooknFeel sliderlnf;
@@ -150,7 +160,26 @@ private:
     juce::TextButton PLAY{ "PLAY" };
     juce::TextButton STOP{ "STOP" };
 
+    juce::TextButton Gate{ "Gate" };
+    juce::TextButton APComp{ "Comp" };
+    juce::TextButton MBandComp{ "3-Comp" };
+    juce::TextButton Limiter{ "Limit" };
 
+    juce::TextButton LB{ "L" };
+    juce::TextButton MB{ "M" };
+    juce::TextButton HB{ "H" };
+    void multibuttonsInVisible() {
+        LB.setVisible(false);
+        MB.setVisible(false);
+        HB.setVisible(false);
+    }
+
+    void multibuttonsVisible() {
+        LB.setVisible(true);
+        MB.setVisible(true);
+        HB.setVisible(true);
+    }
+    
     enum TransportState
     {
         Stopped,
@@ -161,12 +190,31 @@ private:
         Paused,
         Pausing
     };
+
+    enum Controls
+    {
+        Display_Gate,
+        Display_Allpass,
+        Display_MultiBand,
+        Display_Limiter
+    };
+
+    enum MB_Controls
+    {
+        Display_LB,
+        Display_MB,
+        Display_HB
+    };
     TransportState state;
+    Controls controlState;
+    MB_Controls multibandState;
     enum RadioButttonIds {
 
         LimiterButtons = 1001
     };
     void changeState(TransportState newState);
+    void changeControls(Controls newState);
+    void multiStateChange(MB_Controls newState);
     juce::LinearSmoothedValue<float> in_rmsLevel_L, in_rmsLevel_R, out_rmsLevel_L, out_rmsLevel_R;
     float get_in_RMSvalue(const int channel) const;
     float get_out_RMSvalue(const int channel) const;

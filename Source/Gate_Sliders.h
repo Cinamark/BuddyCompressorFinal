@@ -27,7 +27,7 @@ public:
         thresh.setValue(0);
         thresh.setRange(-60, 6, .5);
         ratio.setSliderStyle(juce::Slider::SliderStyle::Rotary);
-        ratio.setRange(2, 100, 1);
+        ratio.setRange(1, 100, 1);
         ratio.setValue(2);
         auto range = juce::NormalisableRange<double>(5, 500, 1);
         att.setSliderStyle(juce::Slider::SliderStyle::Rotary);
@@ -42,28 +42,6 @@ public:
         addAndMakeVisible(&att);
         addAndMakeVisible(&rel);
     }
-
-    /*GateSliders(juce::UndoManager* uMgr) :
-        undoMgr(*uMgr),
-        threshAttach(test, &thresh, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Gate_Thresh)} }, & undoMgr),
-        ratAttach(test, &ratio, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Gate_Ratio)} }, & undoMgr),
-        attAttach(test, &att, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Gate_Attack)} }, & undoMgr),
-        relAttach(test, &rel, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Gate_Release)} }, & undoMgr)
-    {
-        thresh.setSliderStyle(juce::Slider::SliderStyle::Rotary);
-        ratio.setSliderStyle(juce::Slider::SliderStyle::Rotary);
-        auto range = juce::NormalisableRange<double>(1, 100, 1);
-        att.setSliderStyle(juce::Slider::SliderStyle::Rotary);
-        att.setNormalisableRange(range);
-        rel.setSliderStyle(juce::Slider::SliderStyle::Rotary);
-        rel.setNormalisableRange(range);
-
-        addAndMakeVisible(&thresh);
-        addAndMakeVisible(&ratio);
-        addAndMakeVisible(&att);
-        addAndMakeVisible(&rel);
-    }*/
-
 
     void resized() override
     {

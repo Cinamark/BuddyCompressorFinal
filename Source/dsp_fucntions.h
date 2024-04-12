@@ -141,9 +141,29 @@ void applyGain(T& buffer, U& gain)
 class DSPFunctions {
 public:
 
-    DSPFunctions(){}
-    void prepare(const juce::dsp::ProcessSpec& spec) {
+    DSPFunctions(){
+        LP1.setType(juce::dsp::LinkwitzRileyFilterType::lowpass);
+        LP2.setType(juce::dsp::LinkwitzRileyFilterType::lowpass);
+        HP1.setType(juce::dsp::LinkwitzRileyFilterType::highpass);
+        HP2.setType(juce::dsp::LinkwitzRileyFilterType::highpass);
+        AP2.setType(juce::dsp::LinkwitzRileyFilterType::allpass);
+    }
+    void prepare(const juce::dsp::ProcessSpec& spec, int samplesPerBlockExpected) {
         gate.prepare(spec);
+        comp.prepare(spec);
+        for (auto& compressor : multi_compressors)
+            compressor.prepare(spec);
+        for (auto& buffer : filterBuffers) {
+            buffer.setSize(spec.numChannels, samplesPerBlockExpected);
+        }
+
+        LP1.prepare(spec);
+        LP2.prepare(spec);
+        HP1.prepare(spec);
+        HP2.prepare(spec);
+        AP2.prepare(spec);
+
+
     }
     void setTree(juce::ValueTree tree) {
         this->tree = tree;
@@ -159,7 +179,90 @@ public:
         gate.process(ctx);
     }
 
+    void APCompressorProcess(juce::dsp::AudioBlock<float>& block) {
+            const auto& params = Params::GetParams();
+            comp.setAttack(tree[juce::Identifier{ params.at(Params::Names::Attack_AllPass) }]);
+            comp.setRelease(tree[juce::Identifier{ params.at(Params::Names::Release_AllPass) }]);
+            comp.setThreshold(tree[juce::Identifier{ params.at(Params::Names::Threshold_AllPass) }]);
+            comp.setRatio((tree[juce::Identifier{ params.at(Params::Names::Ratio_AllPass) }]));
+
+            auto ctx = juce::dsp::ProcessContextReplacing<float>(block);
+            comp.process(ctx);
+
+    }
+
+    void MultibandComp(juce::AudioBuffer<float>& buffer) {
+        for (auto& fb : filterBuffers)
+            fb = buffer;
+
+        const auto& params = Params::GetParams();
+        auto lowMidCutoff = tree[juce::Identifier{ params.at(Params::Names::Low_Mid_Crossover_Freq) }];
+        LP1.setCutoffFrequency(lowMidCutoff);
+        HP1.setCutoffFrequency(lowMidCutoff);
+
+        auto midHighCutoff = tree[juce::Identifier{ params.at(Params::Names::Mid_High_Crossover_Freq) }];
+        HP2.setCutoffFrequency(midHighCutoff);
+        LP2.setCutoffFrequency(midHighCutoff);
+        AP2.setCutoffFrequency(midHighCutoff);
+
+        auto fb0Block = juce::dsp::AudioBlock<float>(filterBuffers[0]);
+        auto fb1Block = juce::dsp::AudioBlock<float>(filterBuffers[1]);
+        auto fb2Block = juce::dsp::AudioBlock<float>(filterBuffers[2]);
+        auto fb0Ctx = juce::dsp::ProcessContextReplacing<float>(fb0Block);
+        auto fb1Ctx = juce::dsp::ProcessContextReplacing<float>(fb1Block);
+        auto fb2Ctx = juce::dsp::ProcessContextReplacing<float>(fb2Block);
+
+        LP1.process(fb0Ctx);
+        AP2.process(fb0Ctx);
+
+        
+
+        HP1.process(fb1Ctx);
+        filterBuffers[2] = filterBuffers[1];
+        LP2.process(fb1Ctx);
+        HP2.process(fb2Ctx);
+
+        multi_compressors[0].setAttack(tree[juce::Identifier{ params.at(Params::Names::Attack_Low_Band) }]);
+        multi_compressors[0].setRelease(tree[juce::Identifier{ params.at(Params::Names::Release_Low_Band) }]);
+        multi_compressors[0].setThreshold(tree[juce::Identifier{ params.at(Params::Names::Threshold_Low_Band) }]);
+        multi_compressors[0].setRatio(tree[juce::Identifier{ params.at(Params::Names::Ratio_Low_Band) }]);
+
+        multi_compressors[1].setAttack(tree[juce::Identifier{ params.at(Params::Names::Attack_Mid_Band) }]);
+        multi_compressors[1].setRelease(tree[juce::Identifier{ params.at(Params::Names::Release_Mid_Band) }]);
+        multi_compressors[1].setThreshold(tree[juce::Identifier{ params.at(Params::Names::Threshold_Mid_Band) }]);
+        multi_compressors[1].setRatio(tree[juce::Identifier{ params.at(Params::Names::Ratio_Mid_Band) }]);
+
+        multi_compressors[2].setAttack(tree[juce::Identifier{ params.at(Params::Names::Attack_High_Band) }]);
+        multi_compressors[2].setRelease(tree[juce::Identifier{ params.at(Params::Names::Release_High_Band) }]);
+        multi_compressors[2].setThreshold(tree[juce::Identifier{ params.at(Params::Names::Threshold_High_Band) }]);
+        multi_compressors[2].setRatio(tree[juce::Identifier{ params.at(Params::Names::Ratio_High_Band) }]);
+
+        for (size_t i = 0; i < filterBuffers.size(); ++i) {
+            auto block = juce::dsp::AudioBlock<float>(filterBuffers[i]);
+            auto ctx = juce::dsp::ProcessContextReplacing<float>(block);
+            multi_compressors[i].process(ctx);
+        }
+
+        auto numSamples = buffer.getNumSamples();
+        auto numChannels = buffer.getNumChannels();
+
+        buffer.clear();
+
+        auto addFilterBand = [nc = numChannels, ns = numSamples](auto& inputBuffer, const auto& source) {
+            for (auto i = 0; i < nc; ++i)
+                inputBuffer.addFrom(i, 0, source, i, 0, ns);
+            };
+
+        addFilterBand(buffer, filterBuffers[0]);
+        addFilterBand(buffer, filterBuffers[1]);
+        addFilterBand(buffer, filterBuffers[2]);
+    }
+
 private:
-    juce::dsp::Compressor<float> gate;
+    juce::dsp::NoiseGate<float> gate;
+    juce::dsp::Compressor<float> comp;
+    std::array<juce::dsp::Compressor<float>, 3> multi_compressors;
+    std::array<juce::AudioBuffer<float>, 3> filterBuffers;
+    juce::dsp::LinkwitzRileyFilter<float> LP1, AP2, HP1, LP2, HP2;
     juce::ValueTree tree;
 };
