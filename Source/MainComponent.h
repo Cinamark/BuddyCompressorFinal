@@ -12,6 +12,7 @@
 #include "MB_Multiband_Controls.h"
 #include "HP_Multiband_Controls.h"
 #include "FrequencySliders.h"
+#include "Analyzer.h"
 
 //=============================================================================
 
@@ -84,6 +85,7 @@ public:
     void playButtonClicked();
     void stopButtonClicked();
     void processBlock(juce::AudioBuffer<float>& buffer);
+
 
     //====================================================
 
@@ -168,6 +170,10 @@ private:
     juce::TextButton LB{ "L" };
     juce::TextButton MB{ "M" };
     juce::TextButton HB{ "H" };
+
+
+    juce::TextButton Waveform_Btn{ "Waveform" };
+    juce::TextButton Frequency{ "Freq" };
     void multibuttonsInVisible() {
         LB.setVisible(false);
         MB.setVisible(false);
@@ -221,6 +227,7 @@ private:
 
     GUI::Horiz_Meter in_meterL;
     GUI::Horiz_Meter in_meterR;
+    GUI::Analyser inAnalyse, outAnalyse;
     juce::ApplicationCommandManager c_manager;
     DSPFunctions dspfunc;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)

@@ -52,6 +52,13 @@ MainComponent::MainComponent()
     addAndMakeVisible(&playback_bar);
     addAndMakeVisible(&in_meterL);
     addAndMakeVisible(&in_meterR);
+    addAndMakeVisible(&inAnalyse);
+    inAnalyse.setVisible(false);
+
+    addAndMakeVisible(&Waveform_Btn);
+    Waveform_Btn.onClick = [this]() {waveform.setVisible(true); inAnalyse.setVisible(false); };
+    addAndMakeVisible(&Frequency);
+    Frequency.onClick = [this]() {waveform.setVisible(false); inAnalyse.setVisible(true); };
 
     //Controls
     addAndMakeVisible(&gateSliderComp);
@@ -144,14 +151,17 @@ void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& buffe
         bufferToFill.clearActiveBufferRegion();
         return;
     }
-
-
     transportSource.getNextAudioBlock(bufferToFill);
+    auto* channelData = bufferToFill.buffer->getReadPointer(0, bufferToFill.startSample);
+
+    for (auto i = 0; i < bufferToFill.numSamples; ++i)
+        inAnalyse.pushNextSampleIntoFifo(channelData[i]);
 
     juce::AudioBuffer<float> procBuf(bufferToFill.buffer->getArrayOfWritePointers(),
         bufferToFill.buffer->getNumChannels(),
         bufferToFill.startSample,
         bufferToFill.numSamples);
+
 
     processBlock(procBuf);
     
@@ -178,7 +188,7 @@ void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& buffe
 void MainComponent::processBlock(juce::AudioBuffer<float>& buffer) {
     auto block = juce::dsp::AudioBlock<float>(buffer);
     //dspfunc.NoiseGateProcess(block);
-    //dspfunc.APCompressorProcess(block);
+    dspfunc.APCompressorProcess(block);
     dspfunc.MultibandComp(buffer);
 }
 void MainComponent::releaseResources()
@@ -216,10 +226,20 @@ void MainComponent::resized()
     playback_bar.setBounds(waveform.getBounds());
 
     auto wav_bounds = waveform.getBounds();
-    
+    inAnalyse.setBounds(wav_bounds);
     in_meterL.setBounds(getLocalBounds().getX(), wav_bounds.getTopLeft().getY(), wav_bounds.getTopLeft().getX(), waveform.getHeight());
     in_meterR.setBounds(wav_bounds.getTopRight().getX(), wav_bounds.getTopRight().getY(), getLocalBounds().getRight()- wav_bounds.getTopRight().getX(), waveform.getHeight());
 
+    juce::FlexBox input_view_flex;
+    input_view_flex.flexDirection = juce::FlexBox::Direction::row;
+    input_view_flex.flexWrap = juce::FlexBox::Wrap::noWrap;
+
+    auto input_view_bounds = juce::Rectangle<float>(wav_bounds.getX(), wav_bounds.getBottom(), 200, 30);
+
+    input_view_flex.items.add(juce::FlexItem(Waveform_Btn).withFlex(1.f));
+    input_view_flex.items.add(juce::FlexItem(Frequency).withFlex(1.f));
+
+    input_view_flex.performLayout(input_view_bounds);
     //Controls
     auto slider_bounds = controls.getBounds().removeFromRight(600).reduced(80);
     slida.setBounds(slider_bounds);
