@@ -41,7 +41,9 @@ namespace Params
         Bypass_Low,
         Bypass_Mid,
         Bypass_High,
-        Bypass_Global,
+        Bypass_Allpass,
+        Bypass_Gate,
+        Bypass_Limiter,
 
         Solo_Low,
         Solo_Mid,
@@ -58,6 +60,10 @@ namespace Params
         Gate_Ratio,
         Gate_Attack,
         Gate_Release,
+
+        Limiter_Threshold,
+        Limiter_Release,
+        SS_Toggle
     };
 
     inline const std::map<Names, juce::String>& GetParams() {
@@ -87,7 +93,10 @@ namespace Params
             {Mute_Mid, "Mute Mid"},
             {Mute_High, "Mute High"},
             {Gain_In, "Gain In"},
-            {Bypass_Global, "Bypass Global"},
+            {Gain_Out, "Gain Out"},
+            {Bypass_Allpass, "Bypass Allpass"},
+            {Bypass_Gate, "Bypass Gate"},
+            {Bypass_Limiter, "Bypass Limiter"},
             {Threshold_AllPass, "Allpass Threshold"},
             {Ratio_AllPass, "Allpass Ratio"},
             {Attack_AllPass, "Allpass Attack"},
@@ -96,6 +105,10 @@ namespace Params
             {Gate_Ratio, "Gate Ratio"},
             {Gate_Attack, "Gate Attack"},
             {Gate_Release, "Gate Release"},
+            {Limiter_Threshold, "Limiter Threshold"},
+            {Limiter_Release, "Limiter Release"},
+            {SS_Toggle, "Silence Slicer Toggle"}
+
         };
 
         return params;

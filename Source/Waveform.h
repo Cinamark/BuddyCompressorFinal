@@ -38,6 +38,10 @@ namespace GUI {
             input_file = opened_File;
         }
 
+        void set_as_output() {
+            is_output_wavform = true;
+
+        }
         void run() override {
             loadData(input_file);
         }
@@ -59,18 +63,44 @@ namespace GUI {
 
                 if (reader != nullptr) {
                     thumbnail.reset(procBuf.getNumChannels(), reader->sampleRate, procBuf.getNumSamples());
-                    while (counter < len) {
-                        
-                        reader->read(&procBuf, 0, procBuf.getNumSamples(), counter, true, true);
-                        
-                        thumbnail.addBlock(counter, procBuf, 0, procBuf.getNumSamples());
-                        counter += procBuf.getNumSamples();
-                        procBuf.clear();
-                    }
-                }
+                    if (!is_output_wavform) {
+                        while (counter < len) {
 
+                            reader->read(&procBuf, 0, procBuf.getNumSamples(), counter, true, true);
+
+                            thumbnail.addBlock(counter, procBuf, 0, procBuf.getNumSamples());
+                            counter += procBuf.getNumSamples();
+                            procBuf.clear();
+                        }
+                    }
+                    else
+                    {
+                        while (counter < len) {
+                            dsp_prepare(reader->sampleRate, procBuf.getNumSamples());
+                            reader->read(&procBuf, 0, procBuf.getNumSamples(), counter, true, true);
+                            //dspfunc.NoiseGateProcess(procBuf);
+                            dspfunc.APCompressorProcess(procBuf);
+                            dspfunc.MultibandComp(procBuf);
+                            thumbnail.addBlock(counter, procBuf, 0, procBuf.getNumSamples());
+                            counter += procBuf.getNumSamples();
+                            procBuf.clear();
+                        }
+                    }
+
+                }
             }
         }
+
+        void dsp_prepare(double sample_rate, int samplesPerBlockExpected) {
+
+            juce::dsp::ProcessSpec spec;
+            spec.maximumBlockSize = samplesPerBlockExpected;
+            spec.numChannels = 2;
+            spec.sampleRate = sample_rate;
+
+            dspfunc.prepare(spec, samplesPerBlockExpected);
+        }
+
         void paint(juce::Graphics& g) override {
             juce::Rectangle<int> thumbnailBounds(0, 0, getWidth(), getHeight());
 
@@ -113,7 +143,8 @@ namespace GUI {
 
         juce::AudioThumbnail thumbnail;
     private:
-
+        bool is_output_wavform = false;
+        DSPFunctions dspfunc;
         juce::AudioFormatManager formatManager;
         juce::AudioThumbnailCache thumbnailCache;
         juce::File input_file;

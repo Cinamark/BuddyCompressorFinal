@@ -4,12 +4,25 @@
 MainComponent::MainComponent()
     : menu_2(i_file), playback_bar(transportSource), state(Stopped), controlState(Display_Gate), multibandState(Display_LB),
     in_meterL([&]() {return get_in_RMSvalue(0); }), in_meterR([&]() {return get_in_RMSvalue(1); }),
+    out_meterL([&]() {return get_out_RMSvalue(0); }), out_meterR([&]() {return get_out_RMSvalue(1); }),
     gateSliderComp{ paramTree, &undo },
     apCompressorSliderComp { paramTree, &undo },
     lbCompressorSliderComp{ paramTree, &undo },
     mbCompressorSliderComp{ paramTree, &undo },
     hbCompressorSliderComp{ paramTree, &undo },
-    freqComp{ paramTree, &undo }
+    freqComp{ paramTree, &undo },
+    limSliderComp{ paramTree, &undo },
+    inputGainAttach(paramTree, &input_gain, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Gain_In)} }),
+    outputGainAttach(paramTree, &output_gain, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Gain_Out)} }),
+
+    gate_xAttach(paramTree, &gate_x, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Bypass_Gate)} }),
+    allband_xAttach(paramTree, &allband_x, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Bypass_Allpass)} }),
+    lowband_xAttach(paramTree, &lowband_x, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Bypass_Low)} }),
+    midband_xAttach(paramTree, &midband_x, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Bypass_Mid)} }),
+    highband_xAttach(paramTree, &highband_x, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Bypass_High)} }),
+    limiter_xAttach(paramTree, &limiter_x, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Bypass_Limiter)} }),
+    save_thread{paramTree},
+    pManage{paramTree}
 {
     // Make sure you set the size of the component after
     // you add any child components.
@@ -36,6 +49,7 @@ MainComponent::MainComponent()
     c_manager.setFirstCommandTarget(this);
     addKeyListener(c_manager.getKeyMappings());
     setWantsKeyboardFocus(true);
+    paramTree.setProperty(juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::SS_Toggle)} }, false, nullptr);
 
 
     addAndMakeVisible(output);
@@ -48,17 +62,21 @@ MainComponent::MainComponent()
 
     //Header Region
     addAndMakeVisible(&menu_2);
-    addAndMakeVisible(&waveform);
+    addAndMakeVisible(&in_waveform);
     addAndMakeVisible(&playback_bar);
     addAndMakeVisible(&in_meterL);
     addAndMakeVisible(&in_meterR);
     addAndMakeVisible(&inAnalyse);
+    auto gain_range = juce::NormalisableRange<double>(-60, 6, .5);
+    input_gain.setNormalisableRange(gain_range);
+    addAndMakeVisible(&input_gain);
     inAnalyse.setVisible(false);
 
-    addAndMakeVisible(&Waveform_Btn);
-    Waveform_Btn.onClick = [this]() {waveform.setVisible(true); inAnalyse.setVisible(false); };
-    addAndMakeVisible(&Frequency);
-    Frequency.onClick = [this]() {waveform.setVisible(false); inAnalyse.setVisible(true); };
+
+    addAndMakeVisible(&header_Waveform_Btn);
+    header_Waveform_Btn.onClick = [this]() {in_waveform.setVisible(true); out_waveform.setVisible(true); inAnalyse.setVisible(false); outAnalyse.setVisible(false); };
+    addAndMakeVisible(&header_Frequency_Btn);
+    header_Frequency_Btn.onClick = [this]() {in_waveform.setVisible(false); out_waveform.setVisible(false); inAnalyse.setVisible(true); outAnalyse.setVisible(true); };
 
     //Controls
     addAndMakeVisible(&gateSliderComp);
@@ -67,12 +85,39 @@ MainComponent::MainComponent()
     addAndMakeVisible(&mbCompressorSliderComp);
     addAndMakeVisible(&hbCompressorSliderComp);
     addAndMakeVisible(&freqComp);
+    addAndMakeVisible(&limSliderComp);
     addAndMakeVisible(&LB);
     LB.onClick = [this]() {multiStateChange(Display_LB); };
     MB.onClick = [this]() {multiStateChange(Display_MB); };
     HB.onClick = [this]() {multiStateChange(Display_HB); };
     addAndMakeVisible(&MB);
     addAndMakeVisible(&HB);
+
+    gate_x.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+    gate_x.setClickingTogglesState(true);
+    gate_x.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+    allband_x.setClickingTogglesState(true);
+    allband_x.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+    lowband_x.setClickingTogglesState(true);
+    lowband_x.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+    midband_x.setClickingTogglesState(true);
+    midband_x.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+    highband_x.setClickingTogglesState(true);
+    highband_x.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+    limiter_x.setClickingTogglesState(true);
+    limiter_x.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+    gate_x.onClick = [this]() {bypassToggle(&gate_x); };
+    allband_x.onClick = [this]() {bypassToggle(&allband_x); };
+    lowband_x.onClick = [this]() {bypassToggle(&lowband_x); };
+    midband_x.onClick = [this]() {bypassToggle(&midband_x); };
+    highband_x.onClick = [this]() {bypassToggle(&highband_x); };
+    limiter_x.onClick = [this]() {bypassToggle(&limiter_x); };
+    addAndMakeVisible(&gate_x);
+    addAndMakeVisible(&allband_x);
+    addAndMakeVisible(&lowband_x);
+    addAndMakeVisible(&midband_x);
+    addAndMakeVisible(&highband_x);
+    addAndMakeVisible(&limiter_x);
     
     //Default Controls State
     Gate.setColour(juce::TextButton::buttonColourId, juce::Colours::chocolate);
@@ -80,14 +125,24 @@ MainComponent::MainComponent()
     MBandComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
     Limiter.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
 
+    LB.setColour(juce::TextButton::buttonColourId, juce::Colours::midnightblue);
+    MB.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+    HB.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+
     gateSliderComp.setVisible(true);
     apCompressorSliderComp.setVisible(false);
     lbCompressorSliderComp.setVisible(false);
     mbCompressorSliderComp.setVisible(false);
     hbCompressorSliderComp.setVisible(false);
+    limSliderComp.setVisible(false);
     freqComp.setVisible(false);
     multibuttonsInVisible();
 
+    allband_x.setVisible(false);
+    lowband_x.setVisible(false);
+    midband_x.setVisible(false);
+    highband_x.setVisible(false);
+    limiter_x.setVisible(false);
 
     addAndMakeVisible(&Gate);
     Gate.onClick = [this]() {changeControls(Display_Gate); };
@@ -96,13 +151,44 @@ MainComponent::MainComponent()
     addAndMakeVisible(&MBandComp);
     MBandComp.onClick = [this]() {changeControls(Display_MultiBand); };
     addAndMakeVisible(&Limiter);
+    Limiter.onClick = [this]() {changeControls(Display_Limiter); };
+
+
     //Footer Region
+    addAndMakeVisible(&out_meterL);
+    addAndMakeVisible(&out_meterR);
+    addAndMakeVisible(&outAnalyse);
+    addAndMakeVisible(&out_waveform);
+    output_gain.setNormalisableRange(gain_range);;
+    addAndMakeVisible(&output_gain);
+    outAnalyse.setVisible(false);
+
+    addAndMakeVisible(&footer_Waveform_Btn);
+    footer_Waveform_Btn.onClick = [this]() {in_waveform.setVisible(true); out_waveform.setVisible(true); inAnalyse.setVisible(false); outAnalyse.setVisible(false); };
+    addAndMakeVisible(&footer_Frequency_Btn);
+    footer_Frequency_Btn.onClick = [this]() {in_waveform.setVisible(false); out_waveform.setVisible(false); inAnalyse.setVisible(true); outAnalyse.setVisible(true); };
+
+
+    //Footer Buttons
     addAndMakeVisible(&PLAY);
     PLAY.onClick = [this]() {playButtonClicked(); };
     PLAY.setEnabled(false);
     addAndMakeVisible(&STOP);
     STOP.onClick = [this]() {stopButtonClicked(); };
     STOP.setEnabled(false);
+    addAndMakeVisible(&SAVE);
+    SAVE.onClick = [this]() {saveButtonClicked(); };
+    SAVE.setEnabled(false);
+    SS.onClick = [this] { updateToggleState(&SS);   };
+    addAndMakeVisible(&SS);
+    SS.setEnabled(false);
+
+    ytpreset_save.onClick = [this] { pManage.savePreset("Youtube");   };
+    addAndMakeVisible(&ytpreset_save);
+
+    podpreset_save.onClick = [this] { pManage.savePreset("PodCast");   };
+    addAndMakeVisible(&podpreset_save);
+
 
     menu_2.FileUpdate = [this]() {
         i_file = menu_2.input_file;
@@ -110,13 +196,29 @@ MainComponent::MainComponent()
 
         if (reader != nullptr)
         {
-            auto newSource = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
-            transportSource.setSource(newSource.get(), 0, nullptr, reader->sampleRate);
-            waveform.setFile(i_file);
-            waveform.startThread();
-            PLAY.setEnabled(true);
-            STOP.setEnabled(false);
-            readerSource.reset(newSource.release());
+            auto duration = (float)reader->lengthInSamples / reader->sampleRate;               // [3]
+
+            if (duration < 18000) {
+                auto newSource = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
+                transportSource.setSource(newSource.get(), 0, nullptr, reader->sampleRate);
+                in_waveform.setFile(i_file);
+                in_waveform.startThread();
+                /*out_waveform.setFile(i_file);
+                out_waveform.set_as_output();
+                out_waveform.startThread();*/
+
+                PLAY.setEnabled(true);
+                SAVE.setEnabled(true);
+                STOP.setEnabled(false);
+                SS.setEnabled(true);
+                readerSource.reset(newSource.release());
+            }
+
+            else {
+                lengthAlert = std::make_unique<juce::AlertWindow>("ERROR", "Maximum file length is 5 hours", juce::MessageBoxIconType::WarningIcon, nullptr);
+
+                lengthAlert->showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "ERROR", "Maximum file length is 5 hours", "Ok", nullptr, nullptr);
+            }
         }
         };
 }
@@ -142,6 +244,11 @@ void MainComponent::prepareToPlay(int samplesPerBlockExpected, double sampleRate
     in_rmsLevel_R.reset(sampleRate, 0.02);
     in_rmsLevel_R.setCurrentAndTargetValue(-100.f);
 
+    out_rmsLevel_L.reset(sampleRate, 0.02);
+    out_rmsLevel_L.setCurrentAndTargetValue(-100.f);
+    out_rmsLevel_R.reset(sampleRate, 0.02);
+    out_rmsLevel_R.setCurrentAndTargetValue(-100.f);
+
     dspfunc.prepare(spec, samplesPerBlockExpected);
 }
 void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& bufferToFill)
@@ -152,24 +259,17 @@ void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& buffe
         return;
     }
     transportSource.getNextAudioBlock(bufferToFill);
-    auto* channelData = bufferToFill.buffer->getReadPointer(0, bufferToFill.startSample);
-
-    for (auto i = 0; i < bufferToFill.numSamples; ++i)
-        inAnalyse.pushNextSampleIntoFifo(channelData[i]);
 
     juce::AudioBuffer<float> procBuf(bufferToFill.buffer->getArrayOfWritePointers(),
         bufferToFill.buffer->getNumChannels(),
         bufferToFill.startSample,
         bufferToFill.numSamples);
 
-
-    processBlock(procBuf);
-    
-
+    dspfunc.applyInputGain(procBuf);
 
     in_rmsLevel_L.skip(bufferToFill.buffer->getNumSamples());
     in_rmsLevel_R.skip(bufferToFill.buffer->getNumSamples());
-    {   
+    {
         const auto value = juce::Decibels::gainToDecibels(bufferToFill.buffer->getRMSLevel(0, 0, bufferToFill.buffer->getNumSamples()));
         if (value < in_rmsLevel_L.getCurrentValue())
             in_rmsLevel_L.setTargetValue(value);
@@ -184,12 +284,50 @@ void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& buffe
         else
             in_rmsLevel_R.setCurrentAndTargetValue(value);
     }
+
+    auto* in_channelData = bufferToFill.buffer->getReadPointer(0, bufferToFill.startSample);
+
+    for (auto i = 0; i < bufferToFill.numSamples; ++i)
+        inAnalyse.pushNextSampleIntoFifo(in_channelData[i]);
+
+
+
+    processBlock(procBuf);
+    
+
+    out_rmsLevel_L.skip(bufferToFill.buffer->getNumSamples());
+    out_rmsLevel_R.skip(bufferToFill.buffer->getNumSamples());
+    {
+        const auto value = juce::Decibels::gainToDecibels(bufferToFill.buffer->getRMSLevel(0, 0, bufferToFill.buffer->getNumSamples()));
+        if (value < out_rmsLevel_L.getCurrentValue())
+            out_rmsLevel_L.setTargetValue(value);
+        else
+            out_rmsLevel_L.setCurrentAndTargetValue(value);
+    }
+
+    {
+        const auto value = juce::Decibels::gainToDecibels(bufferToFill.buffer->getRMSLevel(1, 0, bufferToFill.buffer->getNumSamples()));
+        if (value < out_rmsLevel_R.getCurrentValue())
+            out_rmsLevel_R.setTargetValue(value);
+        else
+            out_rmsLevel_R.setCurrentAndTargetValue(value);
+    }
+
+    auto* out_channelData = bufferToFill.buffer->getReadPointer(0, bufferToFill.startSample);
+
+    for (auto i = 0; i < bufferToFill.numSamples; ++i)
+        outAnalyse.pushNextSampleIntoFifo(out_channelData[i]);
+
 }
 void MainComponent::processBlock(juce::AudioBuffer<float>& buffer) {
-    auto block = juce::dsp::AudioBlock<float>(buffer);
-    //dspfunc.NoiseGateProcess(block);
-    dspfunc.APCompressorProcess(block);
+
+    juce::ScopedNoDenormals noDenormals;
+    dspfunc.NoiseGateProcess(buffer);
+    dspfunc.APCompressorProcess(buffer);
     dspfunc.MultibandComp(buffer);
+    dspfunc.applyLimiter(buffer);
+    dspfunc.applyOutputGain(buffer);
+
 }
 void MainComponent::releaseResources()
 {
@@ -222,13 +360,13 @@ void MainComponent::resized()
     controls.setBounds(area);
 
     //Input
-    waveform.setBounds(input.getBounds().reduced(40));
-    playback_bar.setBounds(waveform.getBounds());
+    in_waveform.setBounds(input.getBounds().reduced(40));
+    playback_bar.setBounds(in_waveform.getBounds());
 
-    auto wav_bounds = waveform.getBounds();
+    auto wav_bounds = in_waveform.getBounds();
     inAnalyse.setBounds(wav_bounds);
-    in_meterL.setBounds(getLocalBounds().getX(), wav_bounds.getTopLeft().getY(), wav_bounds.getTopLeft().getX(), waveform.getHeight());
-    in_meterR.setBounds(wav_bounds.getTopRight().getX(), wav_bounds.getTopRight().getY(), getLocalBounds().getRight()- wav_bounds.getTopRight().getX(), waveform.getHeight());
+    in_meterL.setBounds(getLocalBounds().getX(), wav_bounds.getTopLeft().getY(), wav_bounds.getTopLeft().getX(), in_waveform.getHeight());
+    in_meterR.setBounds(wav_bounds.getTopRight().getX(), wav_bounds.getTopRight().getY(), getLocalBounds().getRight()- wav_bounds.getTopRight().getX(), in_waveform.getHeight());
 
     juce::FlexBox input_view_flex;
     input_view_flex.flexDirection = juce::FlexBox::Direction::row;
@@ -236,10 +374,12 @@ void MainComponent::resized()
 
     auto input_view_bounds = juce::Rectangle<float>(wav_bounds.getX(), wav_bounds.getBottom(), 200, 30);
 
-    input_view_flex.items.add(juce::FlexItem(Waveform_Btn).withFlex(1.f));
-    input_view_flex.items.add(juce::FlexItem(Frequency).withFlex(1.f));
+    input_view_flex.items.add(juce::FlexItem(header_Waveform_Btn).withFlex(1.f));
+    input_view_flex.items.add(juce::FlexItem(header_Frequency_Btn).withFlex(1.f));
 
     input_view_flex.performLayout(input_view_bounds);
+
+    input_gain.setBounds(input_view_bounds.getRight(), input_view_bounds.getY(), 500, 50);
     //Controls
     auto slider_bounds = controls.getBounds().removeFromRight(600).reduced(80);
     slida.setBounds(slider_bounds);
@@ -248,6 +388,7 @@ void MainComponent::resized()
     hbCompressorSliderComp.setBounds(slider_bounds);
     mbCompressorSliderComp.setBounds(slider_bounds);
     lbCompressorSliderComp.setBounds(slider_bounds);
+    limSliderComp.setBounds(slider_bounds);
     freqComp.setBounds(slider_bounds.getX(), slider_bounds.getBottom(), slider_bounds.getWidth(), 50);
 
 
@@ -265,7 +406,11 @@ void MainComponent::resized()
     flex.items.add(juce::FlexItem(Limiter).withFlex(1.f));
     flex.performLayout(control_bounds);
 
+    auto bypass_bounds = juce::Rectangle<int>(slider_bounds.getRight(), slider_bounds.getY(), 50, slider_bounds.getHeight());
 
+    gate_x.setBounds(bypass_bounds);
+    limiter_x.setBounds(bypass_bounds);
+    allband_x.setBounds(bypass_bounds);
     //Multi Control Controls XD
     auto multi_controls_width = 50;
     auto multi_control_bounds = juce::Rectangle<float>(slider_bounds.getX() - multi_controls_width, slider_bounds.getY(), multi_controls_width, slider_bounds.getHeight());
@@ -279,12 +424,44 @@ void MainComponent::resized()
     multi_flex.items.add(juce::FlexItem(HB).withFlex(1.f));
     multi_flex.performLayout(multi_control_bounds);
 
+    juce::FlexBox multi_bypass_flex;
+    multi_bypass_flex.flexDirection = juce::FlexBox::Direction::column;
+    multi_bypass_flex.flexWrap = juce::FlexBox::Wrap::noWrap;
 
+    multi_bypass_flex.items.add(juce::FlexItem(lowband_x).withFlex(1.f));
+    multi_bypass_flex.items.add(juce::FlexItem(midband_x).withFlex(1.f));
+    multi_bypass_flex.items.add(juce::FlexItem(highband_x).withFlex(1.f));
+    multi_bypass_flex.performLayout(bypass_bounds);
     //Output
+    outAnalyse.setBounds(output.getBounds().reduced(40));
+
+    auto wav_out_bounds = outAnalyse.getBounds();
+    out_waveform.setBounds(wav_out_bounds);
+
+    out_meterL.setBounds(getLocalBounds().getX(), wav_out_bounds.getTopLeft().getY(), wav_out_bounds.getTopLeft().getX(), outAnalyse.getHeight());
+    out_meterR.setBounds(wav_out_bounds.getTopRight().getX(), wav_out_bounds.getTopRight().getY(), getLocalBounds().getRight() - wav_out_bounds.getTopRight().getX(), outAnalyse.getHeight());
+
+    juce::FlexBox output_view_flex;
+    output_view_flex.flexDirection = juce::FlexBox::Direction::row;
+    output_view_flex.flexWrap = juce::FlexBox::Wrap::noWrap;
+
+    auto output_view_bounds = juce::Rectangle<float>(wav_out_bounds.getX(), wav_out_bounds.getBottom(), 200, 30);
+
+    output_view_flex.items.add(juce::FlexItem(footer_Waveform_Btn).withFlex(1.f));
+    output_view_flex.items.add(juce::FlexItem(footer_Frequency_Btn).withFlex(1.f));
+
+    output_view_flex.performLayout(output_view_bounds);
+
+    output_gain.setBounds(output_view_bounds.getRight(), output_view_bounds.getY(), 500, 50);
 
     auto button_bounds = buttons.getBounds();
-    PLAY.setBounds(button_bounds.removeFromTop(40));
-    STOP.setBounds(button_bounds.removeFromTop(40));
+    PLAY.setBounds(button_bounds.getX(), button_bounds.getY(), button_bounds.getWidth()/2, button_bounds.getHeight() / 2);
+    SAVE.setBounds(PLAY.getRight(), button_bounds.getY(), button_bounds.getWidth() / 2, button_bounds.getHeight() / 2);
+    STOP.setBounds(PLAY.getX(),PLAY.getBottom(), button_bounds.getWidth() / 2, button_bounds.getHeight() / 2);
+    SS.setBounds(STOP.getRight(),PLAY.getBottom(), SAVE.getWidth() / 2, button_bounds.getHeight() / 2);
+
+    ytpreset_save.setBounds(SS.getRight(), SS.getY(), SS.getWidth() / 2, SS.getHeight());
+    podpreset_save.setBounds(ytpreset_save.getRight(), ytpreset_save.getY(), SS.getWidth() / 2, ytpreset_save.getHeight());
 }
 
 void MainComponent::playButtonClicked()
@@ -294,6 +471,21 @@ void MainComponent::playButtonClicked()
     else if (state == Playing)
         changeState(Pausing);
     
+}
+
+void MainComponent::saveButtonClicked() {
+    save_chooser = std::make_unique<juce::FileChooser>("Please name your file...",
+        juce::File{},
+        "*.wav");
+    auto chooserFlags = juce::FileBrowserComponent::saveMode
+        | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::warnAboutOverwriting;
+
+    save_chooser->launchAsync(chooserFlags, [this](const juce::FileChooser& fc)
+        {
+            auto file = fc.getResult();
+            save_thread.setFile(i_file, file);
+            save_thread.launchThread();
+        });
 }
 
 void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
@@ -373,7 +565,13 @@ void MainComponent::changeControls(Controls newState) {
             mbCompressorSliderComp.setVisible(false);
             lbCompressorSliderComp.setVisible(false);
             freqComp.setVisible(false);
+            limSliderComp.setVisible(false);
             multibuttonsInVisible();
+
+            gate_x.setVisible(true);
+            allband_x.setVisible(false);
+            multiBypassInVisible();
+            limiter_x.setVisible(false);
             break;
 
         case Display_Allpass:
@@ -388,6 +586,12 @@ void MainComponent::changeControls(Controls newState) {
             mbCompressorSliderComp.setVisible(false);
             lbCompressorSliderComp.setVisible(false);
             freqComp.setVisible(false);
+            limSliderComp.setVisible(false);
+
+            gate_x.setVisible(false);
+            allband_x.setVisible(true);
+            multiBypassInVisible();
+            limiter_x.setVisible(false);
             multibuttonsInVisible();
             break;
 
@@ -399,11 +603,43 @@ void MainComponent::changeControls(Controls newState) {
 
             gateSliderComp.setVisible(false);
             apCompressorSliderComp.setVisible(false);
+            limSliderComp.setVisible(false);
             multibuttonsVisible();
+
+            multiBypassVisible();
+            gate_x.setVisible(false);
+            allband_x.setVisible(false);
+            limiter_x.setVisible(false);
+
             freqComp.setVisible(true);
             multiStateChange(multibandState);
             break;
+
+
+        case Display_Limiter:
+            Gate.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            APComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            MBandComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            Limiter.setColour(juce::TextButton::buttonColourId, juce::Colours::chocolate);
+
+            gateSliderComp.setVisible(false);
+            apCompressorSliderComp.setVisible(false);
+            hbCompressorSliderComp.setVisible(false);
+            mbCompressorSliderComp.setVisible(false);
+            lbCompressorSliderComp.setVisible(false);
+            freqComp.setVisible(false);
+            limSliderComp.setVisible(true);
+            multibuttonsInVisible();
+
+
+            gate_x.setVisible(true);
+            allband_x.setVisible(false);
+            multiBypassInVisible();
+            limiter_x.setVisible(true);
+            break;
         }
+
+        
     }
 }
 
@@ -413,18 +649,30 @@ void MainComponent::multiStateChange(MB_Controls newState) {
     switch (multibandState)
     {
     case Display_LB:
+        LB.setColour(juce::TextButton::buttonColourId, juce::Colours::midnightblue);
+        MB.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+        HB.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+
         hbCompressorSliderComp.setVisible(false);
         mbCompressorSliderComp.setVisible(false);
         lbCompressorSliderComp.setVisible(true);
         break;
 
     case Display_MB:
+        LB.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+        MB.setColour(juce::TextButton::buttonColourId, juce::Colours::midnightblue);
+        HB.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+
         hbCompressorSliderComp.setVisible(false);
         mbCompressorSliderComp.setVisible(true);
         lbCompressorSliderComp.setVisible(false);
         break;
 
     case Display_HB:
+        LB.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+        MB.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+        HB.setColour(juce::TextButton::buttonColourId, juce::Colours::midnightblue);
+
         hbCompressorSliderComp.setVisible(true);
         mbCompressorSliderComp.setVisible(false);
         lbCompressorSliderComp.setVisible(false);
@@ -460,4 +708,18 @@ float MainComponent::get_out_RMSvalue(const int channel) const
         return out_rmsLevel_L.getCurrentValue();
     if (channel == 1)
         return out_rmsLevel_R.getCurrentValue();
+}
+
+void MainComponent::updateToggleState(juce::Button* button)
+{
+    paramTree.setProperty(juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::SS_Toggle)} }, button->getToggleState(), nullptr);
+}
+
+void  MainComponent::bypassToggle(juce::Button* button) {
+    if (button->getToggleState() == true){
+        button->setColour(juce::TextButton::buttonOnColourId, juce::Colours::red);
+        return;
+}
+    if (!button->getToggleState())
+        button->setColour(juce::TextButton::buttonColourId, juce::Colours::black);
 }

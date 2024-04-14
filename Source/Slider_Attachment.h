@@ -17,38 +17,38 @@ class TreeSliderAttachment : public juce::Slider::Listener,
 {
 public:
     TreeSliderAttachment(juce::ValueTree v, juce::Slider* slida, juce::Identifier parameter)
-        : tree(v), btn(slida), param(parameter)
+        : tree(v), slide(slida), param(parameter)
 
     {
         jassert(tree.isValid());
         tree.addListener(this);
-        btn->addListener(this);
+        slide->addListener(this);
 
         if (param == juce::Identifier{ "Gate Ratio" } || param == juce::Identifier{ "Ratio High Band" }) {
             tree.setProperty(param, 7, nullptr);
         }
 
         if (tree.hasProperty(param)) {
-            btn->setValue(tree.getProperty(param));
+            slide->setValue(tree.getProperty(param));
         }
         else
-            tree.setProperty(param, btn->getValue(), nullptr);
+            tree.setProperty(param, slide->getValue(), nullptr);
 
 
     }
     ~TreeSliderAttachment() {
         tree.removeListener(this);
-        if (btn)
-            btn->removeListener(this);
+        if (slide)
+            slide->removeListener(this);
     }
 
 
     void valueTreePropertyChanged(juce::ValueTree& Changedtree, const juce::Identifier& Changedparam) override {
         if (!updating) {
             updating = true;
-            if (Changedtree == tree && btn)
+            if (Changedtree == tree && slide)
                 if (Changedparam == param)
-                    btn->setValue(tree.getProperty(param));
+                    slide->setValue(tree.getProperty(param));
         }
         updating = false;
     }
@@ -58,7 +58,7 @@ public:
     }
     juce::ValueTree tree;
 private:
-    juce::Component::SafePointer<juce::Slider> btn;
+    juce::Component::SafePointer<juce::Slider> slide;
     juce::Identifier param;
     bool updating = false;
 };

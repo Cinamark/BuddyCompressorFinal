@@ -97,6 +97,8 @@ bool MenuBarComp::perform(const juce::ApplicationCommandTarget::InvocationInfo& 
             input_chooser->launchAsync(chooserFlags, [this](const juce::FileChooser& fc)
                 {
                     auto file = fc.getResult();
+                    if (file == juce::File{})
+                        return;
                     input_file = file;
                     FileUpdate();
                 });

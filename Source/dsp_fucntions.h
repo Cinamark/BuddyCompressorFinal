@@ -151,6 +151,7 @@ public:
     void prepare(const juce::dsp::ProcessSpec& spec, int samplesPerBlockExpected) {
         gate.prepare(spec);
         comp.prepare(spec);
+        limiter.prepare(spec);
         for (auto& compressor : multi_compressors)
             compressor.prepare(spec);
         for (auto& buffer : filterBuffers) {
@@ -163,30 +164,42 @@ public:
         HP2.prepare(spec);
         AP2.prepare(spec);
 
+        inputGain.prepare(spec);
+        outputGain.prepare(spec);
+
+        inputGain.setRampDurationSeconds(0.05);
+        outputGain.setRampDurationSeconds(0.05);
 
     }
+
     void setTree(juce::ValueTree tree) {
         this->tree = tree;
     }
-    void NoiseGateProcess( juce::dsp::AudioBlock<float>& block) {
+    void NoiseGateProcess(juce::AudioBuffer<float>& buffer) {
         const auto& params = Params::GetParams();
         gate.setAttack(tree[juce::Identifier{ params.at(Params::Names::Gate_Attack) }]);
         gate.setRelease(tree[juce::Identifier{ params.at(Params::Names::Gate_Release) }]);
         gate.setThreshold(tree[juce::Identifier{ params.at(Params::Names::Gate_Thresh) }]);
         gate.setRatio((tree[juce::Identifier{ params.at(Params::Names::Gate_Ratio) }]));
 
+        auto block = juce::dsp::AudioBlock<float>(buffer);
         auto ctx = juce::dsp::ProcessContextReplacing<float>(block);
+
+        ctx.isBypassed = tree[juce::Identifier{ params.at(Params::Names::Bypass_Gate) }];
         gate.process(ctx);
     }
 
-    void APCompressorProcess(juce::dsp::AudioBlock<float>& block) {
+    void APCompressorProcess(juce::AudioBuffer<float>& buffer) {
             const auto& params = Params::GetParams();
             comp.setAttack(tree[juce::Identifier{ params.at(Params::Names::Attack_AllPass) }]);
             comp.setRelease(tree[juce::Identifier{ params.at(Params::Names::Release_AllPass) }]);
             comp.setThreshold(tree[juce::Identifier{ params.at(Params::Names::Threshold_AllPass) }]);
             comp.setRatio((tree[juce::Identifier{ params.at(Params::Names::Ratio_AllPass) }]));
 
+            auto block = juce::dsp::AudioBlock<float>(buffer);
             auto ctx = juce::dsp::ProcessContextReplacing<float>(block);
+
+            ctx.isBypassed = tree[juce::Identifier{ params.at(Params::Names::Bypass_Allpass) }];
             comp.process(ctx);
 
     }
@@ -240,6 +253,21 @@ public:
         for (size_t i = 0; i < filterBuffers.size(); ++i) {
             auto block = juce::dsp::AudioBlock<float>(filterBuffers[i]);
             auto ctx = juce::dsp::ProcessContextReplacing<float>(block);
+
+            switch (i)
+            {
+            case 0:
+                ctx.isBypassed = tree[juce::Identifier{ params.at(Params::Names::Bypass_Low) }];
+                break;
+            
+            case 1:
+                ctx.isBypassed = tree[juce::Identifier{ params.at(Params::Names::Bypass_Mid) }];
+                break;
+        
+            case 2:
+            ctx.isBypassed = tree[juce::Identifier{ params.at(Params::Names::Bypass_High) }];
+            break;
+            }
             multi_compressors[i].process(ctx);
         }
 
@@ -258,9 +286,52 @@ public:
         addFilterBand(buffer, filterBuffers[2]);
     }
 
+    void applyInputGain(juce::AudioBuffer<float>& buffer) {
+        juce::ScopedNoDenormals noDenormals;
+        const auto& params = Params::GetParams();
+        inputGain.setGainDecibels(tree[juce::Identifier{ params.at(Params::Names::Gain_In) }]);
+        auto block = juce::dsp::AudioBlock<float>(buffer);
+        auto ctx = juce::dsp::ProcessContextReplacing<float>(block);
+
+        inputGain.process(ctx);
+    }
+
+    void applyOutputGain(juce::AudioBuffer<float>& buffer) {
+
+        const auto& params = Params::GetParams();
+        outputGain.setGainDecibels(tree[juce::Identifier{ params.at(Params::Names::Gain_Out) }]);
+        auto block = juce::dsp::AudioBlock<float>(buffer);
+        auto ctx = juce::dsp::ProcessContextReplacing<float>(block);
+
+        outputGain.process(ctx);
+    }
+
+    void applyLimiter(juce::AudioBuffer<float>& buffer) {
+
+        const auto& params = Params::GetParams();
+        limiter.setAttack(30);
+        limiter.setRelease(tree[juce::Identifier{ params.at(Params::Names::Limiter_Release) }]);
+        limiter.setThreshold(tree[juce::Identifier{ params.at(Params::Names::Limiter_Threshold) }]);
+        limiter.setRatio(100);
+
+        auto block = juce::dsp::AudioBlock<float>(buffer);
+        auto ctx = juce::dsp::ProcessContextReplacing<float>(block);
+
+        ctx.isBypassed = tree[juce::Identifier{ params.at(Params::Names::Bypass_Limiter) }];
+
+        limiter.process(ctx);
+    }
+
+    float SilenceSlicer(juce::AudioBuffer<float>& buffer) {
+
+        juce::ScopedNoDenormals noDenormals;
+
+        return juce::Decibels::gainToDecibels(buffer.getRMSLevel(0, 0, buffer.getNumSamples()));
+    }
 private:
+    juce::dsp::Gain<float> inputGain, outputGain;
     juce::dsp::NoiseGate<float> gate;
-    juce::dsp::Compressor<float> comp;
+    juce::dsp::Compressor<float> comp, limiter;
     std::array<juce::dsp::Compressor<float>, 3> multi_compressors;
     std::array<juce::AudioBuffer<float>, 3> filterBuffers;
     juce::dsp::LinkwitzRileyFilter<float> LP1, AP2, HP1, LP2, HP2;

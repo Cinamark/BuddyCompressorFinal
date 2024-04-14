@@ -1,0 +1,57 @@
+/*
+  ==============================================================================
+
+    Limiter_Sliders.h
+    Created: 13 Apr 2024 7:57:00am
+    Author:  Simeon
+
+  ==============================================================================
+*/
+
+#pragma once
+#include <JuceHeader.h>
+#include "ParamsMap.h"
+#include "Slider_Attachment.h"
+class LimiterSliders : public juce::Component
+{
+public:
+    LimiterSliders(const juce::ValueTree& v, juce::UndoManager* uMgr)
+        : ltree(v), undoMgr(*uMgr),
+
+        threshAttach(ltree, &thresh, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Limiter_Threshold)} }),
+        relAttach(ltree, &rel, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Limiter_Release)} })
+    {
+        thresh.setSliderStyle(juce::Slider::SliderStyle::Rotary);
+        thresh.setValue(0);
+        thresh.setRange(-60, 6, .5);
+        auto range = juce::NormalisableRange<double>(5, 500, 1);
+        rel.setSliderStyle(juce::Slider::SliderStyle::Rotary);
+        rel.setValue(5);
+        rel.setNormalisableRange(range);
+
+        addAndMakeVisible(&thresh);
+        addAndMakeVisible(&rel);
+    }
+
+    void resized() override
+    {
+        auto bounds = getLocalBounds();
+        juce::FlexBox flex;
+        flex.flexDirection = juce::FlexBox::Direction::row;
+        flex.flexWrap = juce::FlexBox::Wrap::noWrap;
+        auto slider_size = bounds.getWidth() * 0.25f;
+
+
+        flex.items.add(juce::FlexItem(thresh).withFlex(1.f));
+        flex.items.add(juce::FlexItem(rel).withFlex(1.f));
+        flex.performLayout(bounds);
+    }
+    juce::ValueTree ltree;
+private:
+    juce::Slider thresh, rel;
+    TreeSliderAttachment threshAttach;
+    TreeSliderAttachment relAttach;
+
+
+    juce::UndoManager& undoMgr;
+};
