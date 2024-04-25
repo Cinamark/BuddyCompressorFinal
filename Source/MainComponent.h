@@ -17,6 +17,10 @@
 #include "Analyzer.h"
 #include "Button_Attachment.h"
 #include "PresetManager.h"
+#include "Control_Labels.h"
+#include "Label_LnF.h"
+#include "Undo_Alert_Label.h"
+
 
 //=============================================================================
 
@@ -36,7 +40,7 @@ enum CommandID {
 class SliderLooknFeel : public juce::LookAndFeel_V4 {
 public:
     SliderLooknFeel() {
-
+ 
     }
 
     void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
@@ -50,11 +54,11 @@ public:
         auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
 
         // fill
-        g.setColour(juce::Colours::orange);
+        g.setColour(juce::Colour::fromRGB(200, 200, 207));
         g.fillEllipse(rx, ry, rw, rw);
 
         // outline
-        g.setColour(juce::Colours::red);
+        g.setColour(juce::Colours::black);
         g.drawEllipse(rx, ry, rw, rw, 1.0f);
 
         juce::Path p;
@@ -66,10 +70,93 @@ public:
         g.setColour(juce::Colours::blue);
         g.fillPath(p);
     }
+
+    juce::Label* createSliderTextBox(juce::Slider& slider) override
+    {
+        juce::Label* l = LookAndFeel_V4::createSliderTextBox(slider);
+
+        // make sure editor text is black (so it shows on white background)
+        l->setColour(juce::Label::textColourId, juce::Colours::white);
+        l->setColour(juce::Label::backgroundColourId, juce::Colours::darkgrey);
+        return l;
+    }
+
+
+};
+
+
+class ToggleButtonLooknFeel : public juce::LookAndFeel_V4 {
+public:
+    ToggleButtonLooknFeel() {
+        setColour(juce::ToggleButton::ColourIds::textColourId, juce::Colours::white);
+    }
+
+    void drawTickBox(juce::Graphics& g, juce::Component& btn, float x, float y, float w, float h, bool ticked, bool isEnabled, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override {
+        auto radius = (float)juce::jmin(w / 2, h / 2) - 4.0f;
+        auto centreX = (float)x + (float)w * 0.5f;
+        auto centreY = (float)y + (float)h * 0.5f;
+        auto rx = centreX - radius;
+        auto ry = centreY - radius;
+        auto rw = radius * 2.0f;
+
+        
+
+
+        g.setColour(juce::Colours::red);
+        g.drawEllipse(rx, ry, rw, rw, 1.0f);
+
+        g.setColour(juce::Colours::bisque);
+        g.fillEllipse(rx, ry, rw, rw);
+
+        if (shouldDrawButtonAsHighlighted && !ticked) {
+
+                auto shrink = 5;
+                g.setColour(juce::Colours::red);
+                g.fillEllipse(rx + shrink * 0.5f, ry + shrink * 0.5f, rw - shrink, rw - shrink);
+
+
+        }
+        if (ticked) {
+
+            auto shrink = 5;
+            g.setColour(juce::Colours::blue);
+            g.fillEllipse(rx + shrink*0.5f, ry + shrink * 0.5f, rw - shrink, rw - shrink);
+
+
+        }
+    }
+
+    juce::Label* createSliderTextBox(juce::Slider& slider) override
+    {
+        juce::Label* l = LookAndFeel_V4::createSliderTextBox(slider);
+
+        // make sure editor text is black (so it shows on white background)
+        l->setColour(juce::Label::textColourId, juce::Colours::white);
+        l->setColour(juce::Label::backgroundColourId, juce::Colours::darkgrey);
+        return l;
+    }
+
+
+};
+
+class PresetButtonsBg : public juce::Component {
+public:
+
+    PresetButtonsBg() {
+
+    }
+    void paint(juce::Graphics& g) override {
+        g.setColour(juce::Colours::darkgrey);
+        g.fillAll();
+        g.setColour(juce::Colours::whitesmoke);
+        g.drawRect(getLocalBounds());
+    }
+
 };
 class MainComponent  : public juce::AudioAppComponent,
     public juce::ChangeListener,
-    public juce::ApplicationCommandTarget
+    public juce::ApplicationCommandTarget,
+    public juce::Thread::Listener
 {
 public:
     //==============================================================================
@@ -82,7 +169,18 @@ public:
     void releaseResources() override;
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
     bool keyPressed(const juce::KeyPress& key) override;
+    void loadYoutube();
+    void loadPodcast();
+    void setCustom();
+    void exitSignalSent() {
+        const juce::MessageManagerLock mmLock;
+        paramTree.setProperty(juce::Identifier{ Params::GetParams().at(Params::Names::Gain_In) }, (std::abs(in_waveform.getPeak())), nullptr);
+        input_peak = (std::abs(in_waveform.getPeak()));
+    }
 
+    //void mouseUp(const juce::MouseEvent& event) override {
+    //    undo.beginNewTransaction();
+    //}
     //==============================================================================
     void paint (juce::Graphics& g) override;
     void resized() override;
@@ -99,7 +197,7 @@ public:
         return nullptr;
     };
     void getAllCommands(juce::Array<juce::CommandID>& c) override{
-        juce::Array<CommandID> commands{ CommandID::PAUSE };
+        juce::Array<CommandID> commands{ CommandID::PAUSE, CommandID::SAVE};
         c.addArray(commands);
     };
 
@@ -110,6 +208,11 @@ public:
         case CommandID::PAUSE:
             result.setInfo("Pause/Pay", "The audio is paused and/or played", "Audio Playback", 0);
             result.addDefaultKeypress(' ',0);
+            break;
+
+        case CommandID::SAVE:
+            result.setInfo("Pause/Pay", "The audio is paused and/or played", "Audio Playback", 0);
+            result.addDefaultKeypress('s', juce::ModifierKeys::commandModifier);
             break;
         default:
             break;
@@ -126,6 +229,9 @@ public:
                 changeState(Starting);
 
             break; }
+        case CommandID::SAVE: {
+            saveButtonClicked();
+            break; }
         default:
             return false;
         }
@@ -139,10 +245,11 @@ private:
     
     juce::ColourGradient bg_gradient;
 
+    PresetButtonsBg preset_bg;
     juce::MenuBarComponent menu;
     juce::File i_file;
     MenuBarComp menu_2;
-    juce::Identifier paramId{ "Parameter Tree" };
+    juce::Identifier paramId{ "Parameter_Tree" };
     juce::ValueTree paramTree{ paramId };
     juce::UndoManager undo;
     
@@ -152,13 +259,14 @@ private:
     juce::AudioTransportSource transportSource;
     bool file_loaded = false;
 
+    float input_peak = 0.0;
     GUI::Waveform in_waveform, out_waveform;
     GUI::Wav_Bar playback_bar;
     GUI::customLnF LNF;
 
     juce::Slider input_gain, output_gain;
     TreeSliderAttachment inputGainAttach, outputGainAttach;
-    //ToggleButtonAttachment SSAttach;
+    juce::Label input_gain_label, output_gain_label;
     GateSliders gateSliderComp;
     APCompressorSliders apCompressorSliderComp;
     HighBandCompSliders hbCompressorSliderComp;
@@ -166,14 +274,21 @@ private:
     LowBandCompSliders  lbCompressorSliderComp;
     FrequencySliders freqComp;
     LimiterSliders limSliderComp;
+    DynamicRangeLabels base_labels;
+    LimiterLabels lim_labels;
+    FreqLabels freq_labels;
     Placeholder input, preset, controls, output, buttons, slida;
 
-    //SliderLooknFeel sliderlnf;
+    SliderLooknFeel sliderlnf;
+    LabelLooknFeel labellnf;
 
     juce::TextButton PLAY{ "PLAY" };
     juce::TextButton STOP{ "STOP" };
     juce::TextButton SAVE{ "SAVE" };
     juce::ToggleButton SS{ "Silence Slicer" };
+
+    ToggleButtonLooknFeel presetlnf;
+    juce::ToggleButton yt_button{ "Youtube" }, pod_button{ "Podcast" }, custom{ "Custom" };
 
     juce::TextButton ytpreset_save{ "yt preset Save" }, podpreset_save{ "podSave" };
 
@@ -248,9 +363,9 @@ private:
     TransportState state;
     Controls controlState;
     MB_Controls multibandState;
-    enum RadioButttonIds {
+    enum RadioButtonIds {
 
-        LimiterButtons = 1001
+        PresetButtons = 1001
     };
     void changeState(TransportState newState);
     void changeControls(Controls newState);
@@ -271,6 +386,7 @@ private:
     public:
         SaveThread(juce::ValueTree tree) : juce::ThreadWithProgressWindow("Saving...", true, true), ltree(tree) {
             dspfunc.setTree(ltree);
+            formatManager.registerBasicFormats();
         }
 
         ~SaveThread() {
@@ -298,17 +414,17 @@ private:
 
                 juce::AudioBuffer<float> procBuf;
 
-                juce::WavAudioFormat wavFormat;
 
-                auto* reader = wavFormat.createReaderFor(fileStream.get(), true);
+                auto* reader = formatManager.createReaderFor(input_file);
 
 
 
                 juce::int64 counter = 0;
                 int len = (int)reader->lengthInSamples;
-                procBuf.setSize((int)reader->numChannels, 44100);
+                procBuf.setSize((int)reader->numChannels, 410);
 
                 prepareDSP(reader->sampleRate, procBuf.getNumSamples(), procBuf.getNumChannels());
+
                 juce::WavAudioFormat format;
                 std::unique_ptr<juce::AudioFormatWriter> writer;
                 writer.reset(format.createWriterFor(new juce::FileOutputStream(o_file), reader->sampleRate, procBuf.getNumChannels(), 16, {}, 0));
@@ -359,10 +475,87 @@ private:
         juce::File input_file;
         juce::File o_file;
         DSPFunctions dspfunc;
+        juce::AudioFormatManager formatManager;
     };
 
+    
     std::unique_ptr<juce::FileChooser> save_chooser;
     SaveThread save_thread;
     PresetManager pManage;
+    UndoAlert undo_label;
+    bool isDragging = false;
+    void makeEverythingVisible() {
+
+        input_gain_label.setVisible(true);
+        output_gain_label.setVisible(true);
+
+        input_gain.setVisible(true);
+        output_gain.setVisible(true);
+
+        gateSliderComp.setVisible(true);
+        apCompressorSliderComp.setVisible(false);
+        lbCompressorSliderComp.setVisible(false);
+        mbCompressorSliderComp.setVisible(false);
+        hbCompressorSliderComp.setVisible(false);
+        limSliderComp.setVisible(false);
+        freqComp.setVisible(false);
+        lim_labels.setVisible(false);
+        multibuttonsInVisible();
+
+        gate_x.setVisible(true);
+        allband_x.setVisible(false);
+        lowband_x.setVisible(false);
+        midband_x.setVisible(false);
+        highband_x.setVisible(false);
+        limiter_x.setVisible(false);
+
+        base_labels.setVisible(true);
+        //lim_labels.setVisible(true);
+
+        Gate.setVisible(true);
+        APComp.setVisible(true);
+        MBandComp.setVisible(true);
+        Limiter.setVisible(true);
+        input_gain_label.setVisible(true);
+        output_gain_label.setVisible(true);
+    }
+
+    void makeEverythingInVisible() {
+
+        input_gain_label.setVisible(false);
+        output_gain_label.setVisible(false);
+
+        input_gain.setVisible(false);
+        output_gain.setVisible(false);
+
+        gateSliderComp.setVisible(false);
+        apCompressorSliderComp.setVisible(false);
+        lbCompressorSliderComp.setVisible(false);
+        mbCompressorSliderComp.setVisible(false);
+        hbCompressorSliderComp.setVisible(false);
+        limSliderComp.setVisible(false);
+        freqComp.setVisible(false);
+        lim_labels.setVisible(false);
+        multibuttonsInVisible();
+
+        gate_x.setVisible(false);
+        allband_x.setVisible(false);
+        lowband_x.setVisible(false);
+        midband_x.setVisible(false);
+        highband_x.setVisible(false);
+        limiter_x.setVisible(false);
+
+        base_labels.setVisible(false);
+        lim_labels.setVisible(false);
+
+        Gate.setVisible(false);
+        APComp.setVisible(false);
+        MBandComp.setVisible(false);
+        Limiter.setVisible(false);
+        input_gain_label.setVisible(false);
+        output_gain_label.setVisible(false);
+
+        freq_labels.setVisible(false);
+    }
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

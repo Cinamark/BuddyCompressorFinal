@@ -24,10 +24,12 @@ public:
     {
         low_mid.setSliderStyle(juce::Slider::SliderStyle::Rotary);
         low_mid.setValue(400);
-        low_mid.setRange(0, 900, 1);
+        low_mid.setRange(20, 900, 1);
+        low_mid.setTextValueSuffix("Hz");
         mid_high.setSliderStyle(juce::Slider::SliderStyle::Rotary);
         mid_high.setRange(1000, 20000, 1);
         mid_high.setValue(2000);
+        mid_high.setTextValueSuffix("Hz");
 
         addAndMakeVisible(&low_mid);
         addAndMakeVisible(&mid_high);

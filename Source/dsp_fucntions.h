@@ -309,7 +309,7 @@ public:
     void applyLimiter(juce::AudioBuffer<float>& buffer) {
 
         const auto& params = Params::GetParams();
-        limiter.setAttack(30);
+        limiter.setAttack(10);
         limiter.setRelease(tree[juce::Identifier{ params.at(Params::Names::Limiter_Release) }]);
         limiter.setThreshold(tree[juce::Identifier{ params.at(Params::Names::Limiter_Threshold) }]);
         limiter.setRatio(100);

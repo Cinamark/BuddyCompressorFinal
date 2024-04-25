@@ -21,13 +21,13 @@ public:
     enum CommandID {
         OPEN = 1,
         SAVE,
-        SAVE_AS,
         EXIT,
         UNDO,
         REDO,
         DARK,
         LIGHT,
-        SAVE_PRESET
+        SAVE_PRESET,
+        OPEN_PRESET
     };
     MenuBarComp(juce::File& file);
     ~MenuBarComp() override;
@@ -46,6 +46,9 @@ public:
 
     juce::File input_file;
     std::function<void()> FileUpdate = []() {};
+    std::function<void()> SaveFile = []() {};
+    std::function<void()> Undo = []() {};
+    std::function<void()> Redo = []() {};
 private:
     #if JUCE_DEMO_RUNNER
     juce::ApplicationCommandManager& commandManager = getGlobalCommandManager();

@@ -37,7 +37,7 @@ void MenuBarComp::resized() {
 }
 
 juce::StringArray MenuBarComp::getMenuBarNames() {
-    return { "File", "Edit", "Theme", "Save Preset" };
+    return { "File", "Edit", "Theme", "Presets" };
 }
 
 juce::PopupMenu MenuBarComp::getMenuForIndex(int topLevelMenuIndex, const juce::String& menuName) {
@@ -45,8 +45,8 @@ juce::PopupMenu MenuBarComp::getMenuForIndex(int topLevelMenuIndex, const juce::
 
     if (menuName == "File") {
         menu.addCommandItem(&commandManager, CommandID::OPEN);
-        menu.addItem(2, "Save");
-        menu.addItem(3, "Save as");
+        menu.addCommandItem(&commandManager, CommandID::SAVE);
+        //menu.addItem(3, "Save as");
         menu.addItem(4, "Exit");
     }
     else if (menuName == "Theme") {
@@ -54,8 +54,13 @@ juce::PopupMenu MenuBarComp::getMenuForIndex(int topLevelMenuIndex, const juce::
         menu.addItem(16, "Light");
     }
     else if (menuName == "Edit") {
-        menu.addItem(21, "Undo");
-        menu.addItem(21, "Redo");
+        menu.addCommandItem(&commandManager, CommandID::UNDO);
+        menu.addCommandItem(&commandManager, CommandID::REDO);
+    }
+
+    else if (menuName == "Presets") {
+        menu.addItem(31, "Open Preset");
+        menu.addItem(32, "Save Preset");
     }
 
     return menu;
@@ -67,7 +72,7 @@ void MenuBarComp::menuItemSelected(int menuItemID, int topLevelMenuIndex) {
 
 void MenuBarComp::getAllCommands(juce::Array<juce::CommandID>& c) 
 {
-    juce::Array<CommandID> commands{ CommandID::OPEN };
+    juce::Array<CommandID> commands{ CommandID::OPEN, CommandID::SAVE, CommandID::SAVE_PRESET, CommandID::OPEN_PRESET, CommandID::UNDO, CommandID::REDO };
     c.addArray(commands);
 }
 
@@ -76,7 +81,25 @@ void MenuBarComp::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
     switch (commandID)
     {
     case MenuBarComp::CommandID::OPEN:
-        result.setInfo("Open", "This a test", "Menu", 0);
+        result.setInfo("Open", "You are opening a file", "Menu", 0);
+        break;
+
+    case MenuBarComp::CommandID::SAVE:
+        result.setInfo("Save", "You are saving a file", "Menu", 0);
+        break;
+
+    case MenuBarComp::CommandID::SAVE_PRESET:
+        result.setInfo("Save Preset", "You are saving a preset", "Menu", 0);
+        break;
+
+    case MenuBarComp::CommandID::OPEN_PRESET:
+        result.setInfo("Open Preset", "You are opening a preset", "Menu", 0);
+        break;
+    case MenuBarComp::CommandID::UNDO:
+        result.setInfo("Undo", "Goes back 1 step", "Menu", 0);
+        break;
+    case MenuBarComp::CommandID::REDO:
+        result.setInfo("Redo", "Goes forward 1 step", "Menu", 0);
         break;
     default:
         break;
@@ -88,9 +111,9 @@ bool MenuBarComp::perform(const juce::ApplicationCommandTarget::InvocationInfo& 
     switch (info.commandID)
     {
     case MenuBarComp::CommandID::OPEN:{
-            input_chooser = std::make_unique<juce::FileChooser>("Select a Wave file to play...",
+            input_chooser = std::make_unique<juce::FileChooser>("Select a file to play...",
                 juce::File{},
-                "*.wav");
+                "*.wav;*.aiff;*.mp3");
             auto chooserFlags = juce::FileBrowserComponent::openMode
                 | juce::FileBrowserComponent::canSelectFiles;
 
@@ -103,6 +126,23 @@ bool MenuBarComp::perform(const juce::ApplicationCommandTarget::InvocationInfo& 
                     FileUpdate();
                 });
             break; }
+    
+    case MenuBarComp::CommandID::SAVE: {
+        SaveFile();
+        break; }
+
+    case MenuBarComp::CommandID::SAVE_PRESET: {
+        break; }
+    
+    case MenuBarComp::CommandID::OPEN_PRESET: {
+        break; }
+
+    case MenuBarComp::CommandID::UNDO: {
+        Undo();
+        break; }
+    case MenuBarComp::CommandID::REDO: {
+        Redo();
+        break; }
     default:
         return false;
     }

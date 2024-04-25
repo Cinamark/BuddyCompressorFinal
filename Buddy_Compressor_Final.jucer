@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT id="ZyQwS7" name="Buddy_Compressor_Final" projectType="guiapp"
-              useAppConfig="0" addUsingNamespaceToJuceHeader="0" displaySplashScreen="1"
-              jucerFormatVersion="1">
-  <MAINGROUP id="gGM5uQ" name="Buddy_Compressor_Final">
+<JUCERPROJECT id="ZyQwS7" name="Buddy_Compressor" projectType="guiapp" useAppConfig="0"
+              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
+  <MAINGROUP id="gGM5uQ" name="Buddy_Compressor">
     <GROUP id="{603FF16C-782C-061F-92F9-E1CA6FAA6C7C}" name="Source">
+      <FILE id="tAsX6m" name="Label_Attachment.h" compile="0" resource="0"
+            file="Source/Label_Attachment.h"/>
+      <FILE id="OcjsWI" name="Undo_Alert_Label.h" compile="0" resource="0"
+            file="Source/Undo_Alert_Label.h"/>
+      <FILE id="xwOffP" name="PresetManager.h" compile="0" resource="0" file="Source/PresetManager.h"/>
       <GROUP id="{6FF290D0-1B84-78A7-1EED-C6363F9B95F2}" name="Control_Sliders">
         <FILE id="k2OZ56" name="APCompressor_Sliders.h" compile="0" resource="0"
               file="Source/APCompressor_Sliders.h"/>
+        <FILE id="pjgXRc" name="Control_Labels.h" compile="0" resource="0"
+              file="Source/Control_Labels.h"/>
         <FILE id="VSYqbu" name="FrequencySliders.h" compile="0" resource="0"
               file="Source/FrequencySliders.h"/>
         <FILE id="lLd86o" name="Gate_Sliders.h" compile="0" resource="0" file="Source/Gate_Sliders.h"/>
@@ -15,6 +21,8 @@
               file="Source/HP_Multiband_Controls.h"/>
         <FILE id="K3UyJ6" name="LB_Multiband_Controls.h" compile="0" resource="0"
               file="Source/LB_Multiband_Controls.h"/>
+        <FILE id="vmdaRX" name="Limiter_Sliders.h" compile="0" resource="0"
+              file="Source/Limiter_Sliders.h"/>
         <FILE id="qXVQGb" name="MB_Multiband_Controls.h" compile="0" resource="0"
               file="Source/MB_Multiband_Controls.h"/>
         <FILE id="eKwd4k" name="ProcessButtons.h" compile="0" resource="0"
@@ -30,12 +38,17 @@
       <FILE id="GjLBwi" name="dsp_fucntions.cpp" compile="1" resource="0"
             file="Source/dsp_fucntions.cpp"/>
       <FILE id="H61LRa" name="dsp_fucntions.h" compile="0" resource="0" file="Source/dsp_fucntions.h"/>
+      <FILE id="jPFVDs" name="Button_Attachment.h" compile="0" resource="0"
+            file="Source/Button_Attachment.h"/>
       <GROUP id="{FCAC341E-A8B0-01C4-527F-9C885C67D8DA}" name="ExtraComponents">
+        <FILE id="RSsqie" name="Analyzer.h" compile="0" resource="0" file="Source/Analyzer.h"/>
         <FILE id="BBEqe1" name="MenuBar.cpp" compile="1" resource="0" file="Source/MenuBar.cpp"/>
         <FILE id="yj5DLS" name="MenuBar.h" compile="0" resource="0" file="Source/MenuBar.h"/>
         <FILE id="ynxoJr" name="Meter.h" compile="0" resource="0" file="Source/Meter.h"/>
         <FILE id="X71Toj" name="Placeholder_Comp.h" compile="0" resource="0"
               file="Source/Placeholder_Comp.h"/>
+        <FILE id="Kcrk1m" name="Preset_Buttons.h" compile="0" resource="0"
+              file="Source/Preset_Buttons.h"/>
         <FILE id="JVShwU" name="Waveform.h" compile="0" resource="0" file="Source/Waveform.h"/>
       </GROUP>
       <GROUP id="{C09FA3E9-7C1C-C49D-F937-553662B2CE6E}" name="Assets"/>
@@ -44,6 +57,7 @@
       <FILE id="Czvr0G" name="MainComponent.cpp" compile="1" resource="0"
             file="Source/MainComponent.cpp"/>
     </GROUP>
+    <FILE id="vqeVz2" name="Label_LnF.h" compile="0" resource="0" file="Source/Label_LnF.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
@@ -59,7 +73,7 @@
     <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
   </MODULES>
-  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_USE_MP3AUDIOFORMAT="1"/>
   <EXPORTFORMATS>
     <VS2022 targetFolder="Builds/VisualStudio2022">
       <CONFIGURATIONS>

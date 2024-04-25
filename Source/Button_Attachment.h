@@ -15,8 +15,8 @@ class ToggleButtonAttachment : public juce::Button::Listener,
     public juce::ValueTree::Listener
 {
 public:
-    ToggleButtonAttachment(juce::ValueTree v, juce::Button* button, juce::Identifier parameter)
-        : tree(v), btn(button), param(parameter)
+    ToggleButtonAttachment(juce::ValueTree v, juce::Button* button, juce::Identifier parameter, juce::UndoManager* uMgr)
+        : tree(v), btn(button), param(parameter), undoMgr(*uMgr)
 
     {
         jassert(tree.isValid());
@@ -28,7 +28,7 @@ public:
             btn->setToggleState(tree.getProperty(param), juce::dontSendNotification);
         }
         else
-            tree.setProperty(param, btn->getToggleState(),nullptr);
+            tree.setProperty(param, btn->getToggleState(),&undoMgr);
 
 
     }
@@ -52,11 +52,12 @@ public:
     }
 
     void buttonStateChanged(juce::Button* button) override {
-        tree.setProperty(param, button->getToggleState(),nullptr);
+        tree.setProperty(param, button->getToggleState(), &undoMgr);
     }
     juce::ValueTree tree;
 private:
     juce::Button::SafePointer<juce::Button> btn;
     juce::Identifier param;
     bool updating = false;
+    juce::UndoManager& undoMgr;
 };

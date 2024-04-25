@@ -26,8 +26,10 @@ namespace GUI {
             g.setColour(juce::Colours::darkgrey);
             g.fillRect(bounds);
 
-
-            g.setColour(juce::Colours::white);
+            if (level < 0)
+                g.setColour(juce::Colours::white);
+            else if (level > 0)
+                g.setColour(juce::Colours::firebrick);
             const auto scaledY = juce::jmap(level, -60.f, 6.f, 0.f, static_cast<float>(getHeight()));
             g.fillRect(bounds.removeFromBottom(scaledY));
 

@@ -16,17 +16,18 @@ namespace GUI {
     class Waveform :
         public juce::Component,
         public juce::ChangeListener,
-        public juce::Thread
+        public juce::ThreadWithProgressWindow
     {
     public:
         Waveform() : thumbnailCache(5),
             thumbnail(512, formatManager, thumbnailCache),
-            juce::Thread("waveform")
+            juce::ThreadWithProgressWindow("Loading File...", true, false)
         {
             thumbnail.addChangeListener(this);
             formatManager.registerBasicFormats();
         }
         ~Waveform() {
+
             stopThread(1000);
         }
 
@@ -42,6 +43,9 @@ namespace GUI {
             is_output_wavform = true;
 
         }
+        float getPeak() {
+            return peak;
+        }
         void run() override {
             loadData(input_file);
         }
@@ -51,24 +55,36 @@ namespace GUI {
 
                 juce::AudioBuffer<float> procBuf;
 
-                juce::WavAudioFormat wavFormat;
+                
 
-                auto* reader = wavFormat.createReaderFor(fileStream.get(), true);
+                auto* reader = formatManager.createReaderFor(file);
 
 
 
                 juce::int64 counter = 0;
                 int len = (int)reader->lengthInSamples;
-                procBuf.setSize((int)reader->numChannels, 44100);
+                procBuf.setSize((int)reader->numChannels, 410);
 
                 if (reader != nullptr) {
                     thumbnail.reset(procBuf.getNumChannels(), reader->sampleRate, procBuf.getNumSamples());
                     if (!is_output_wavform) {
                         while (counter < len) {
+                            
 
                             reader->read(&procBuf, 0, procBuf.getNumSamples(), counter, true, true);
-
+                            if (counter == 0) {
+                                peak = juce::Decibels::gainToDecibels(procBuf.getMagnitude(0, 0, procBuf.getNumSamples()));
+                                if (peak > 0)
+                                    peak = 0;
+                            }
+                            else {
+                                peak = juce::jmax(peak, juce::Decibels::gainToDecibels(procBuf.getMagnitude(0, 0, procBuf.getNumSamples())));
+                                if (peak > 0.0)
+                                    peak = 0;
+                            }
                             thumbnail.addBlock(counter, procBuf, 0, procBuf.getNumSamples());
+                            
+                            setProgress(counter / (double)reader->lengthInSamples);
                             counter += procBuf.getNumSamples();
                             procBuf.clear();
                         }
@@ -88,7 +104,10 @@ namespace GUI {
                     }
 
                 }
+                delete reader;
             }
+            
+            signalThreadShouldExit();
         }
 
         void dsp_prepare(double sample_rate, int samplesPerBlockExpected) {
@@ -102,7 +121,12 @@ namespace GUI {
         }
 
         void paint(juce::Graphics& g) override {
-            juce::Rectangle<int> thumbnailBounds(0, 0, getWidth(), getHeight());
+            juce::Rectangle<int> thumbnailBounds = getLocalBounds();
+
+            if (is_output_wavform) {
+                paintIfOutput(g, thumbnailBounds);
+                return;
+            }
 
             if (thumbnail.getNumChannels() == 0)
                 paintIfNoFileLoaded(g, thumbnailBounds);
@@ -131,10 +155,16 @@ namespace GUI {
             thumbnail.drawChannels(g,
                 thumbnailBounds,
                 0.0,
-                juce::jmax(30.0, thumbnail.getTotalLength()), 
+                thumbnail.getTotalLength(), 
                 1.0f);
         }
 
+        void paintIfOutput(juce::Graphics& g, const juce::Rectangle<int>& thumbnailBounds) {
+            g.setColour(juce::Colours::darkgrey);
+            g.fillRect(thumbnailBounds);
+            g.setColour(juce::Colours::white);
+            g.drawFittedText("COMING SOON", thumbnailBounds, juce::Justification::centred, 1);
+        }
         void changeListenerCallback(juce::ChangeBroadcaster* source) override
         {
             if (source == &thumbnail)
@@ -148,6 +178,7 @@ namespace GUI {
         juce::AudioFormatManager formatManager;
         juce::AudioThumbnailCache thumbnailCache;
         juce::File input_file;
+        float peak = 0.0;
     };
 
     class Wav_Bar : public juce::Component,

@@ -24,6 +24,10 @@ public:
         thresh.setSliderStyle(juce::Slider::SliderStyle::Rotary);
         thresh.setValue(0);
         thresh.setRange(-60, 6, .5);
+        thresh.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
+        thresh.setTextValueSuffix("db");
+        rel.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
+        rel.setTextValueSuffix("ms");
         auto range = juce::NormalisableRange<double>(5, 500, 1);
         rel.setSliderStyle(juce::Slider::SliderStyle::Rotary);
         rel.setValue(5);
@@ -31,11 +35,15 @@ public:
 
         addAndMakeVisible(&thresh);
         addAndMakeVisible(&rel);
+        addAndMakeVisible(&thresh_label);
+        addAndMakeVisible(&rel_label);
     }
 
     void resized() override
     {
         auto bounds = getLocalBounds();
+
+
         juce::FlexBox flex;
         flex.flexDirection = juce::FlexBox::Direction::row;
         flex.flexWrap = juce::FlexBox::Wrap::noWrap;
@@ -49,6 +57,7 @@ public:
     juce::ValueTree ltree;
 private:
     juce::Slider thresh, rel;
+    juce::Label thresh_label, rel_label;
     TreeSliderAttachment threshAttach;
     TreeSliderAttachment relAttach;
 

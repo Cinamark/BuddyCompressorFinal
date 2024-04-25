@@ -27,6 +27,14 @@ public:
         thresh.setSliderStyle(juce::Slider::SliderStyle::Rotary);
         thresh.setValue(0);
         thresh.setRange(-60, 6, .5);
+        thresh.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
+        thresh.setTextValueSuffix("db");
+        ratio.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
+        ratio.setTextValueSuffix(":1");
+        att.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
+        att.setTextValueSuffix("ms");
+        rel.setTextValueSuffix("ms");
+        rel.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
         ratio.setSliderStyle(juce::Slider::SliderStyle::Rotary);
         ratio.setRange(1, 100, 1);
         ratio.setValue(2);
@@ -62,6 +70,7 @@ public:
     juce::ValueTree ltree;
 private:
     juce::Slider thresh, ratio, att, rel;
+    juce::Label thresh_label{ "Threshold" }, ratio_label{ "Ratio" }, att_label{ "Attack" }, rel_label{ "Release" };
     TreeSliderAttachment threshAttach;
     TreeSliderAttachment ratAttach;
     TreeSliderAttachment attAttach;
