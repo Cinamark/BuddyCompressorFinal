@@ -9,7 +9,6 @@
 */
 
 #pragma once
-#pragma once
 #include <JuceHeader.h>
 
 namespace GUI {
@@ -30,6 +29,18 @@ namespace GUI {
 
             stopThread(1000);
         }
+        void setAsDark() {
+            current_theme = DARK;
+            repaint();
+        }
+
+        void setAsLight() {
+            current_theme = LIGHT;
+            repaint();
+        }
+
+
+        std::function<void()> openFile = [](){};
 
         void info(juce::FileInputSource* source) {
             thumbnail.setSource(source);
@@ -63,7 +74,7 @@ namespace GUI {
 
                 juce::int64 counter = 0;
                 int len = (int)reader->lengthInSamples;
-                procBuf.setSize((int)reader->numChannels, 410);
+                procBuf.setSize((int)reader->numChannels, 64);
 
                 if (reader != nullptr) {
                     thumbnail.reset(procBuf.getNumChannels(), reader->sampleRate, procBuf.getNumSamples());
@@ -79,11 +90,12 @@ namespace GUI {
                             }
                             else {
                                 peak = juce::jmax(peak, juce::Decibels::gainToDecibels(procBuf.getMagnitude(0, 0, procBuf.getNumSamples())));
+                                jassert(!peak == 0);
                                 if (peak > 0.0)
                                     peak = 0;
                             }
                             thumbnail.addBlock(counter, procBuf, 0, procBuf.getNumSamples());
-                            
+                            DBG(peak);
                             setProgress(counter / (double)reader->lengthInSamples);
                             counter += procBuf.getNumSamples();
                             procBuf.clear();
@@ -95,8 +107,8 @@ namespace GUI {
                             dsp_prepare(reader->sampleRate, procBuf.getNumSamples());
                             reader->read(&procBuf, 0, procBuf.getNumSamples(), counter, true, true);
                             //dspfunc.NoiseGateProcess(procBuf);
-                            dspfunc.APCompressorProcess(procBuf);
-                            dspfunc.MultibandComp(procBuf);
+                            //dspfunc.APCompressorProcess(procBuf);
+                            //dspfunc.MultibandComp(procBuf);
                             thumbnail.addBlock(counter, procBuf, 0, procBuf.getNumSamples());
                             counter += procBuf.getNumSamples();
                             procBuf.clear();
@@ -106,8 +118,10 @@ namespace GUI {
                 }
                 delete reader;
             }
-            
+            thumbnail_loaded = true;
+            DBG(peak);
             signalThreadShouldExit();
+
         }
 
         void dsp_prepare(double sample_rate, int samplesPerBlockExpected) {
@@ -117,7 +131,7 @@ namespace GUI {
             spec.numChannels = 2;
             spec.sampleRate = sample_rate;
 
-            dspfunc.prepare(spec, samplesPerBlockExpected);
+            //dspfunc.prepare(spec, samplesPerBlockExpected);
         }
 
         void paint(juce::Graphics& g) override {
@@ -139,31 +153,87 @@ namespace GUI {
 
         void paintIfNoFileLoaded(juce::Graphics& g, const juce::Rectangle<int>& thumbnailBounds)
         {
-            g.setColour(juce::Colours::darkgrey);
-            g.fillRect(thumbnailBounds);
-            g.setColour(juce::Colours::white);
-            g.drawFittedText("No File Loaded", thumbnailBounds, juce::Justification::centred, 1);
+            switch (current_theme) {
+            case DARK:
+                g.setColour(juce::Colour::fromRGB(48, 51, 60));
+                g.fillRect(thumbnailBounds);
+                g.setColour(juce::Colours::white);
+                g.drawRect(thumbnailBounds);
+                g.drawFittedText("No File Loaded", thumbnailBounds, juce::Justification::centred, 1);
+                break;
+
+            case LIGHT:
+                g.setColour(juce::Colours::darkgrey);
+                g.fillRect(thumbnailBounds);
+                g.setColour(juce::Colours::white);
+                g.drawFittedText("No File Loaded", thumbnailBounds, juce::Justification::centred, 1);
+                break;
+            }
+
+           
         }
+            
 
         void paintIfFileLoaded(juce::Graphics& g, const juce::Rectangle<int>& thumbnailBounds)
         {
-            g.setColour(juce::Colours::dimgrey);
-            g.fillRect(thumbnailBounds);
+            switch(current_theme) {
+                case DARK:
+                    g.setColour(juce::Colours::dimgrey);
+                    g.fillRect(thumbnailBounds);
 
-            g.setColour(juce::Colours::cornflowerblue);
+                    g.setColour(juce::Colours::white);
+                    g.drawRect(thumbnailBounds);
 
-            thumbnail.drawChannels(g,
-                thumbnailBounds,
-                0.0,
-                thumbnail.getTotalLength(), 
-                1.0f);
+
+                    g.setColour(juce::Colour::fromRGB(57 + 100, 96 + 100, 187 + 50));
+
+                    thumbnail.drawChannels(g,
+                        thumbnailBounds.reduced(1),
+                        0.0,
+                        thumbnail.getTotalLength(),
+                        1.0f);
+                    break;
+
+                case LIGHT:
+                    g.setColour(juce::Colours::dimgrey);
+                    g.fillRect(thumbnailBounds);
+
+                    /*g.setColour(juce::Colours::white);
+                    g.drawRect(thumbnailBounds);*/
+
+
+                    g.setColour(juce::Colours::cornflowerblue);
+
+                    thumbnail.drawChannels(g,
+                        thumbnailBounds,
+                        0.0,
+                        thumbnail.getTotalLength(),
+                        1.0f);
+                    break;
+            }
+            
+            //g.setColour(juce::Colours::cornflowerblue);
+
+            
         }
 
         void paintIfOutput(juce::Graphics& g, const juce::Rectangle<int>& thumbnailBounds) {
-            g.setColour(juce::Colours::darkgrey);
-            g.fillRect(thumbnailBounds);
-            g.setColour(juce::Colours::white);
-            g.drawFittedText("COMING SOON", thumbnailBounds, juce::Justification::centred, 1);
+            switch (current_theme) {
+            case DARK:
+                g.setColour(juce::Colour::fromRGB(48, 51, 60));
+                g.fillRect(thumbnailBounds);
+                g.setColour(juce::Colours::white);
+                g.drawRect(thumbnailBounds);
+                g.drawFittedText("COMING SOON", thumbnailBounds, juce::Justification::centred, 1);
+                break;
+
+            case LIGHT:
+                g.setColour(juce::Colours::darkgrey);
+                g.fillRect(thumbnailBounds);
+                g.setColour(juce::Colours::white);
+                g.drawFittedText("COMING SOON", thumbnailBounds, juce::Justification::centred, 1);
+                break;
+            }
         }
         void changeListenerCallback(juce::ChangeBroadcaster* source) override
         {
@@ -172,13 +242,22 @@ namespace GUI {
         }
 
         juce::AudioThumbnail thumbnail;
+    juce::File local_file;
     private:
         bool is_output_wavform = false;
-        DSPFunctions dspfunc;
+        //DSPFunctions dspfunc;
         juce::AudioFormatManager formatManager;
         juce::AudioThumbnailCache thumbnailCache;
         juce::File input_file;
         float peak = 0.0;
+        juce::Colour waveform, bg, no_file;
+        enum Theme {
+            DARK,
+            LIGHT
+        };
+
+        Theme current_theme = LIGHT;
+        bool thumbnail_loaded = false;
     };
 
     class Wav_Bar : public juce::Component,
@@ -231,6 +310,7 @@ namespace GUI {
 
         juce::AudioTransportSource& transportSource;
         bool mouse_mov = false;
+        
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Wav_Bar)
     };
     

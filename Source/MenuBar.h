@@ -45,10 +45,16 @@ public:
     bool perform(const InvocationInfo&) override;
 
     juce::File input_file;
+    juce::String presetFile;
+    juce::String savedPresetFile;
     std::function<void()> FileUpdate = []() {};
     std::function<void()> SaveFile = []() {};
     std::function<void()> Undo = []() {};
     std::function<void()> Redo = []() {};
+    std::function<void()> setDark = []() {};
+    std::function<void()> setLight = []() {};
+    std::function<void()> openPreset = []() {};
+    std::function<void()> savePreset = []() {};
 private:
     #if JUCE_DEMO_RUNNER
     juce::ApplicationCommandManager& commandManager = getGlobalCommandManager();
@@ -59,6 +65,8 @@ private:
     std::unique_ptr<juce::MenuBarComponent> menuComponent;
     
     std::unique_ptr<juce::FileChooser> input_chooser;
+    std::unique_ptr<juce::FileChooser> preset_chooser;
+    std::unique_ptr<juce::FileChooser> save_chooser;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MenuBarComp);
 };

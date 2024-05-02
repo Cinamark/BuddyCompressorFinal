@@ -10,17 +10,21 @@
 
 #pragma once
 #include <JuceHeader.h>
-class LabelLooknFeel : public juce::LookAndFeel_V4 {
+class DarkLabelLooknFeel : public juce::LookAndFeel_V4 {
 public:
-    LabelLooknFeel() {
-        setColour(juce::Label::ColourIds::backgroundColourId, juce::Colours::darkgrey);
+    DarkLabelLooknFeel() {
+        setColour(juce::Label::ColourIds::backgroundColourId, juce::Colour::fromRGB(15, 15, 15));
         setColour(juce::Label::ColourIds::textColourId, juce::Colours::white);
         setColour(juce::Label::ColourIds::outlineColourId, juce::Colours::white);
     }
 
-    
+};
 
-
-
-
+class LightLabelLooknFeel : public juce::LookAndFeel_V4 {
+public:
+    LightLabelLooknFeel() {
+        setColour(juce::Label::ColourIds::backgroundColourId, juce::Colours::darkgrey);
+        setColour(juce::Label::ColourIds::textColourId, juce::Colours::white);
+        setColour(juce::Label::ColourIds::outlineColourId, juce::Colours::white);
+    }
 };

@@ -43,3 +43,35 @@ private:
     bool updating = false;
 
 };
+
+class RedoAlert : public juce::Label, public juce::ValueTree::Listener, public juce::ChangeListener
+{
+public:
+    RedoAlert(juce::ValueTree v, juce::UndoManager* uMgr) :
+        tree(v), undo(*uMgr) {
+        tree.addListener(this);
+        undo.addChangeListener(this);
+        this->setColour(juce::Label::ColourIds::backgroundColourId, juce::Colours::black);
+    }
+    ~RedoAlert() {
+        tree.removeListener(this);
+    }
+
+    void changeListenerCallback(juce::ChangeBroadcaster* source) override {
+
+    }
+    void valueTreePropertyChanged(juce::ValueTree& Changedtree, const juce::Identifier& Changedparam) override {
+        if (!updating && undo.isPerformingUndoRedo()) {
+            updating = true;
+            if (Changedtree == tree)
+                this->setText("Redo: " + juce::String{ Changedparam.toString() }, juce::dontSendNotification);
+        }
+        updating = false;
+    }
+
+    juce::ValueTree tree;
+private:
+    juce::UndoManager& undo;
+    bool updating = false;
+
+};

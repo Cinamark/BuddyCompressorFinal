@@ -16,23 +16,20 @@ class TreeSliderAttachment : public juce::Slider::Listener,
     public juce::ValueTree::Listener
 {
 public:
-    TreeSliderAttachment(juce::ValueTree v, juce::Slider* slida, juce::Identifier parameter)
-        : tree(v), slide(slida), param(parameter)
+    TreeSliderAttachment(juce::ValueTree v, juce::Slider* slida, juce::Identifier parameter, juce::UndoManager* uMgr)
+        : tree(v), slide(slida), param(parameter), undoMgr(*uMgr)
 
     {
         jassert(tree.isValid());
         tree.addListener(this);
         slide->addListener(this);
 
-        if (param == juce::Identifier{ "Gate Ratio" } || param == juce::Identifier{ "Ratio High Band" }) {
-            tree.setProperty(param, 7, nullptr);
-        }
 
         if (tree.hasProperty(param)) {
             slide->setValue(tree.getProperty(param));
         }
         else
-            tree.setProperty(param, slide->getValue(), nullptr);
+            tree.setProperty(param, slide->getValue(), &undoMgr);
 
 
     }
@@ -54,11 +51,13 @@ public:
     }
 
     void sliderValueChanged(juce::Slider* slider) override {
-        tree.setProperty(param, slider->getValue(),nullptr);
+        tree.setProperty(param, slider->getValue(), &undoMgr);
     }
+    
     juce::ValueTree tree;
 private:
     juce::Component::SafePointer<juce::Slider> slide;
     juce::Identifier param;
+    juce::UndoManager& undoMgr;
     bool updating = false;
 };

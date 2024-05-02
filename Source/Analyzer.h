@@ -67,12 +67,35 @@ namespace GUI {
             }
         }
 
+        void setAsDark() {
+            current_theme = DARK;
+        }
+        
+        void setAsLight() {
+            current_theme = LIGHT;
+        }
         void paint(juce::Graphics& g) override {
-            g.fillAll(juce::Colours::black);
+            
+            switch (current_theme) {
+            case DARK:
+                g.fillAll(juce::Colours::black);
+                g.setOpacity(1.0f);
+                g.setColour(juce::Colours::blue);
+                drawFrame(g);
+                g.setColour(juce::Colours::white);
+                g.drawRect(getLocalBounds());
+                break;
 
-            g.setOpacity(1.0f);
-            g.setColour(juce::Colours::white);
-            drawFrame(g);
+            case LIGHT:
+                g.fillAll(juce::Colours::black);
+                g.setOpacity(1.0f);
+                g.setColour(juce::Colours::white);
+                drawFrame(g);
+                break;
+            }
+          
+            
+            
         }
 
         void drawFrame(juce::Graphics& g)
@@ -104,6 +127,12 @@ namespace GUI {
         bool nextFFTBlockReady = false;
         float scopeData[scopeSize];
 
+        enum Theme {
+            DARK,
+            LIGHT
+        };
+
+        Theme current_theme = LIGHT;
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Analyser)
     };
 }

@@ -20,6 +20,7 @@
 #include "Control_Labels.h"
 #include "Label_LnF.h"
 #include "Undo_Alert_Label.h"
+#include "ComboBoxAttachment.h"
 
 
 //=============================================================================
@@ -84,6 +85,52 @@ public:
 
 };
 
+class SliderLooknFeel_two : public juce::LookAndFeel_V4 {
+public:
+    SliderLooknFeel_two() {
+
+    }
+
+    void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
+        const float rotaryStartAngle, const float rotaryEndAngle, juce::Slider&) override {
+        auto radius = (float)juce::jmin(width / 2, height / 2) - 4.0f;
+        auto centreX = (float)x + (float)width * 0.5f;
+        auto centreY = (float)y + (float)height * 0.5f;
+        auto rx = centreX - radius;
+        auto ry = centreY - radius;
+        auto rw = radius * 2.0f;
+        auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+
+        // fill
+        g.setColour(juce::Colour::fromRGB(42, 45, 51));
+        g.fillEllipse(rx, ry, rw, rw);
+
+        // outline
+        g.setColour(juce::Colours::white);
+        g.drawEllipse(rx, ry, rw, rw, 1.0f);
+
+        juce::Path p;
+        auto pointerLength = radius * 0.33f;
+        auto pointerThickness = 2.0f;
+        p.addRectangle(-pointerThickness * 0.5f, -radius, pointerThickness, pointerLength);
+        p.applyTransform(juce::AffineTransform::rotation(angle).translated(centreX, centreY));
+
+        g.setColour(juce::Colours::blue);
+        g.fillPath(p);
+    }
+
+    juce::Label* createSliderTextBox(juce::Slider& slider) override
+    {
+        juce::Label* l = LookAndFeel_V4::createSliderTextBox(slider);
+
+        // make sure editor text is black (so it shows on white background)
+        l->setColour(juce::Label::textColourId, juce::Colours::white);
+        l->setColour(juce::Label::backgroundColourId, juce::Colours::darkgrey);
+        return l;
+    }
+
+
+};
 
 class ToggleButtonLooknFeel : public juce::LookAndFeel_V4 {
 public:
@@ -146,7 +193,8 @@ public:
 
     }
     void paint(juce::Graphics& g) override {
-        g.setColour(juce::Colours::darkgrey);
+        //g.setColour(juce::Colours::darkgrey);
+        g.setColour(juce::Colour::fromRGB(48, 51, 60));
         g.fillAll();
         g.setColour(juce::Colours::whitesmoke);
         g.drawRect(getLocalBounds());
@@ -156,7 +204,8 @@ public:
 class MainComponent  : public juce::AudioAppComponent,
     public juce::ChangeListener,
     public juce::ApplicationCommandTarget,
-    public juce::Thread::Listener
+    public juce::Thread::Listener,
+    public juce::FileDragAndDropTarget
 {
 public:
     //==============================================================================
@@ -176,6 +225,7 @@ public:
         const juce::MessageManagerLock mmLock;
         paramTree.setProperty(juce::Identifier{ Params::GetParams().at(Params::Names::Gain_In) }, (std::abs(in_waveform.getPeak())), nullptr);
         input_peak = (std::abs(in_waveform.getPeak()));
+        DBG("level" << (float)paramTree.getProperty(juce::Identifier{ Params::GetParams().at(Params::Names::Gain_In) }));
     }
 
     //void mouseUp(const juce::MouseEvent& event) override {
@@ -188,8 +238,28 @@ public:
     void stopButtonClicked();
     void processBlock(juce::AudioBuffer<float>& buffer);
     void saveButtonClicked();
-    void MainComponent::updateToggleState(juce::Button* button);
+    void updateToggleState(juce::Button* button);
     void bypassToggle(juce::Button* button);
+    void openOperation(juce::File& file);
+    bool isInterestedInFileDrag(const juce::StringArray& files) override {
+        if (files.size() > 1) {
+            return false;
+        }
+        else
+            if (files[0].contains(".wav") || files[0].contains(".mp3") || files[0].contains(".aiff")) {
+                return true;
+            }
+            
+        return false;
+        
+    }
+
+    void filesDropped(const juce::StringArray& files, int x, int y) override {
+        if (files.size() > 1) {
+            return;
+        }
+        openOperation(juce::File{ files[0] });
+    }
 
     //====================================================
 
@@ -197,7 +267,7 @@ public:
         return nullptr;
     };
     void getAllCommands(juce::Array<juce::CommandID>& c) override{
-        juce::Array<CommandID> commands{ CommandID::PAUSE, CommandID::SAVE};
+        juce::Array<CommandID> commands{ CommandID::PAUSE, CommandID::SAVE, CommandID::UNDO, CommandID::REDO };
         c.addArray(commands);
     };
 
@@ -213,6 +283,16 @@ public:
         case CommandID::SAVE:
             result.setInfo("Pause/Pay", "The audio is paused and/or played", "Audio Playback", 0);
             result.addDefaultKeypress('s', juce::ModifierKeys::commandModifier);
+            break;
+
+        case CommandID::UNDO:
+            result.setInfo("Pause/Pay", "The audio is paused and/or played", "Audio Playback", 0);
+            result.addDefaultKeypress('z', juce::ModifierKeys::commandModifier);
+            break;
+
+        case CommandID::REDO:
+            result.setInfo("Pause/Pay", "The audio is paused and/or played", "Audio Playback", 0);
+            result.addDefaultKeypress('y', juce::ModifierKeys::commandModifier);
             break;
         default:
             break;
@@ -232,6 +312,23 @@ public:
         case CommandID::SAVE: {
             saveButtonClicked();
             break; }
+
+        case CommandID::UNDO: {
+            undo.undo();
+
+            addAndMakeVisible(&undo_label);
+            redo_label.setVisible(false);
+            undo_label.setVisible(true);
+            break; }
+
+        case CommandID::REDO: {
+            undo.redo();
+
+            addAndMakeVisible(&redo_label);
+            undo_label.setVisible(false);
+            redo_label.setVisible(true);
+
+            break; }
         default:
             return false;
         }
@@ -244,6 +341,8 @@ private:
     //==============================================================================
     
     juce::ColourGradient bg_gradient;
+    juce::Colour selected_button;
+    SliderLooknFeel_two sliderlnf_two;
 
     PresetButtonsBg preset_bg;
     juce::MenuBarComponent menu;
@@ -264,7 +363,7 @@ private:
     GUI::Wav_Bar playback_bar;
     GUI::customLnF LNF;
 
-    juce::Slider input_gain, output_gain;
+    juce::Slider input_gain, output_gain, silence_samples;
     TreeSliderAttachment inputGainAttach, outputGainAttach;
     juce::Label input_gain_label, output_gain_label;
     GateSliders gateSliderComp;
@@ -280,8 +379,30 @@ private:
     Placeholder input, preset, controls, output, buttons, slida;
 
     SliderLooknFeel sliderlnf;
-    LabelLooknFeel labellnf;
+    DarkLabelLooknFeel labellnf;
 
+    void setSliderlnf(juce::LookAndFeel_V4& lnf) {
+        gateSliderComp.setLookAndFeel(&lnf);
+        apCompressorSliderComp.setLookAndFeel(&lnf);
+        lbCompressorSliderComp.setLookAndFeel(&lnf);
+        mbCompressorSliderComp.setLookAndFeel(&lnf);
+        hbCompressorSliderComp.setLookAndFeel(&lnf);
+        input_gain.setLookAndFeel(&lnf);
+        output_gain.setLookAndFeel(&lnf);
+        freqComp.setLookAndFeel(&lnf);
+        limSliderComp.setLookAndFeel(&lnf);
+
+    }
+
+    enum Theme {
+        DARK,
+        LIGHT
+    };
+
+    Theme current_theme = LIGHT;
+
+    juce::ComboBox ss_samples;
+    ComboBoxAttachment ss_samplesAttach;
     juce::TextButton PLAY{ "PLAY" };
     juce::TextButton STOP{ "STOP" };
     juce::TextButton SAVE{ "SAVE" };
@@ -294,7 +415,7 @@ private:
 
     juce::TextButton gate_x{ "X" }, allband_x{ "X" }, lowband_x{ "X" }, midband_x{ "X" }, highband_x{ "X" }, limiter_x{ "X" };
 
-    ToggleButtonAttachment gate_xAttach, allband_xAttach, lowband_xAttach, midband_xAttach, highband_xAttach, limiter_xAttach;
+    ToggleButtonAttachment gate_xAttach, allband_xAttach, lowband_xAttach, midband_xAttach, highband_xAttach, limiter_xAttach, SS_Attach;
     juce::TextButton Gate{ "Gate" };
     juce::TextButton APComp{ "Comp" };
     juce::TextButton MBandComp{ "3-Comp" };
@@ -362,6 +483,42 @@ private:
     };
     TransportState state;
     Controls controlState;
+
+    void controlButtonTheme(Controls current_state) {
+        switch (current_state) {
+        case Display_Gate:
+            Gate.setColour(juce::TextButton::buttonColourId, selected_button);
+            APComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            MBandComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            Limiter.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            break;
+
+        case Display_Allpass:
+            Gate.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            APComp.setColour(juce::TextButton::buttonColourId, selected_button);
+            MBandComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            Limiter.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            break;
+
+        case Display_MultiBand:
+            Gate.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            APComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            MBandComp.setColour(juce::TextButton::buttonColourId, selected_button);
+            Limiter.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            break;
+
+        case Display_Limiter:
+            Gate.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            APComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            MBandComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            Limiter.setColour(juce::TextButton::buttonColourId, selected_button);
+            break;
+
+        default:
+            break;
+        }
+    }
+
     MB_Controls multibandState;
     enum RadioButtonIds {
 
@@ -421,7 +578,7 @@ private:
 
                 juce::int64 counter = 0;
                 int len = (int)reader->lengthInSamples;
-                procBuf.setSize((int)reader->numChannels, 410);
+                procBuf.setSize((int)reader->numChannels, ltree[juce::Identifier{ Params::GetParams().at(Params::Names::Save_Samples) }]);
 
                 prepareDSP(reader->sampleRate, procBuf.getNumSamples(), procBuf.getNumChannels());
 
@@ -483,6 +640,7 @@ private:
     SaveThread save_thread;
     PresetManager pManage;
     UndoAlert undo_label;
+    RedoAlert redo_label;
     bool isDragging = false;
     void makeEverythingVisible() {
 

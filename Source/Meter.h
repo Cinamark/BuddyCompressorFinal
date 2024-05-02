@@ -18,6 +18,17 @@ namespace GUI {
         Horiz_Meter(std::function<float()>&& valueFunction) : valueSupplier(std::move(valueFunction)) {
             startTimerHz(24);
         }
+
+        void setAsDark() {
+            current_theme = DARK;
+            colour = juce::Colours::cornflowerblue;
+        }
+
+        void setAsLight() {
+            current_theme = LIGHT;
+            colour = juce::Colours::white;
+        }
+
         void paint(juce::Graphics& g) override
         {
             const auto level = valueSupplier();
@@ -27,7 +38,8 @@ namespace GUI {
             g.fillRect(bounds);
 
             if (level < 0)
-                g.setColour(juce::Colours::white);
+                
+                g.setColour(colour);
             else if (level > 0)
                 g.setColour(juce::Colours::firebrick);
             const auto scaledY = juce::jmap(level, -60.f, 6.f, 0.f, static_cast<float>(getHeight()));
@@ -59,5 +71,13 @@ namespace GUI {
     private:
         std::function<float()> valueSupplier;
         juce::ColourGradient gradient;
+
+        enum Theme {
+            DARK,
+            LIGHT
+        };
+
+        Theme current_theme = LIGHT;
+        juce::Colour colour = juce::Colours::white;
     };
 }

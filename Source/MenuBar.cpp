@@ -50,8 +50,8 @@ juce::PopupMenu MenuBarComp::getMenuForIndex(int topLevelMenuIndex, const juce::
         menu.addItem(4, "Exit");
     }
     else if (menuName == "Theme") {
-        menu.addItem(15, "Dark");
-        menu.addItem(16, "Light");
+        menu.addCommandItem(&commandManager, CommandID::DARK);
+        menu.addCommandItem(&commandManager, CommandID::LIGHT);
     }
     else if (menuName == "Edit") {
         menu.addCommandItem(&commandManager, CommandID::UNDO);
@@ -59,8 +59,8 @@ juce::PopupMenu MenuBarComp::getMenuForIndex(int topLevelMenuIndex, const juce::
     }
 
     else if (menuName == "Presets") {
-        menu.addItem(31, "Open Preset");
-        menu.addItem(32, "Save Preset");
+        menu.addCommandItem(&commandManager, CommandID::OPEN_PRESET);
+        menu.addCommandItem(&commandManager, CommandID::SAVE_PRESET);
     }
 
     return menu;
@@ -72,7 +72,7 @@ void MenuBarComp::menuItemSelected(int menuItemID, int topLevelMenuIndex) {
 
 void MenuBarComp::getAllCommands(juce::Array<juce::CommandID>& c) 
 {
-    juce::Array<CommandID> commands{ CommandID::OPEN, CommandID::SAVE, CommandID::SAVE_PRESET, CommandID::OPEN_PRESET, CommandID::UNDO, CommandID::REDO };
+    juce::Array<CommandID> commands{ CommandID::OPEN, CommandID::SAVE, CommandID::SAVE_PRESET, CommandID::OPEN_PRESET, CommandID::UNDO, CommandID::REDO, CommandID::DARK, CommandID::LIGHT };
     c.addArray(commands);
 }
 
@@ -100,6 +100,14 @@ void MenuBarComp::getCommandInfo(juce::CommandID commandID, juce::ApplicationCom
         break;
     case MenuBarComp::CommandID::REDO:
         result.setInfo("Redo", "Goes forward 1 step", "Menu", 0);
+        break;
+
+    case MenuBarComp::CommandID::DARK:
+        result.setInfo("Dark", "Sets theme to dark", "Menu", 0);
+        break;
+
+    case MenuBarComp::CommandID::LIGHT:
+        result.setInfo("Light", "Sets theme to light", "Menu", 0);
         break;
     default:
         break;
@@ -132,9 +140,35 @@ bool MenuBarComp::perform(const juce::ApplicationCommandTarget::InvocationInfo& 
         break; }
 
     case MenuBarComp::CommandID::SAVE_PRESET: {
+        save_chooser = std::make_unique<juce::FileChooser>("Please name your file...",
+            juce::File::getSpecialLocation(juce::File::SpecialLocationType::commonDocumentsDirectory).getChildFile(ProjectInfo::companyName).getChildFile(ProjectInfo::projectName),
+            "*.PRESET");
+        auto chooserFlags = juce::FileBrowserComponent::saveMode
+            | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::warnAboutOverwriting;
+
+        save_chooser->launchAsync(chooserFlags, [this](const juce::FileChooser& fc)
+            {
+                auto file = fc.getResult();
+                savedPresetFile = file.getFileNameWithoutExtension();
+                savePreset();
+            });
         break; }
     
     case MenuBarComp::CommandID::OPEN_PRESET: {
+        preset_chooser = std::make_unique<juce::FileChooser>("Select a preset file...",
+            juce::File::getSpecialLocation(juce::File::SpecialLocationType::commonDocumentsDirectory).getChildFile(ProjectInfo::companyName).getChildFile(ProjectInfo::projectName),
+            "*.PRESET");
+        auto chooserFlags = juce::FileBrowserComponent::openMode
+            | juce::FileBrowserComponent::canSelectFiles;
+
+        preset_chooser->launchAsync(chooserFlags, [this](const juce::FileChooser& fc)
+            {
+                auto file = fc.getResult();
+                if (file == juce::File{})
+                    return;
+                presetFile = file.getFileNameWithoutExtension();
+                openPreset();
+            });
         break; }
 
     case MenuBarComp::CommandID::UNDO: {
@@ -143,9 +177,18 @@ bool MenuBarComp::perform(const juce::ApplicationCommandTarget::InvocationInfo& 
     case MenuBarComp::CommandID::REDO: {
         Redo();
         break; }
+
+    case MenuBarComp::CommandID::DARK: {
+        setDark();
+        break; }
+    
+    case MenuBarComp::CommandID::LIGHT: {
+        setLight();
+        break; }
     default:
         return false;
     }
+
 
     return true;
 }

@@ -12,18 +12,23 @@ MainComponent::MainComponent()
     hbCompressorSliderComp{ paramTree, &undo },
     freqComp{ paramTree, &undo },
     limSliderComp{ paramTree, &undo },
-    inputGainAttach(paramTree, &input_gain, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Gain_In)} }),
-    outputGainAttach(paramTree, &output_gain, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Gain_Out)} }),
+    inputGainAttach(paramTree, &input_gain, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Gain_In)} }, &undo),
+    outputGainAttach(paramTree, &output_gain, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Gain_Out)} }, &undo),
+    //silenceSamplesAttach(paramTree, &silence_samples, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Gain_Out)} }, & undo),
 
+    SS_Attach(paramTree, &SS, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::SS_Toggle)} }, & undo),
     gate_xAttach(paramTree, &gate_x, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Bypass_Gate)} }, & undo),
     allband_xAttach(paramTree, &allband_x, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Bypass_Allpass)} }, & undo),
     lowband_xAttach(paramTree, &lowband_x, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Bypass_Low)} }, & undo),
     midband_xAttach(paramTree, &midband_x, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Bypass_Mid)} }, & undo),
     highband_xAttach(paramTree, &highband_x, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Bypass_High)} }, & undo),
     limiter_xAttach(paramTree, &limiter_x, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Bypass_Limiter)} }, & undo),
+
+    ss_samplesAttach(paramTree, &ss_samples, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Save_Samples)}}, & undo),
     save_thread{ paramTree },
     pManage{ paramTree },
-    undo_label(paramTree, &undo)
+    undo_label(paramTree, &undo),
+    redo_label(paramTree, &undo)
 {
     // Make sure you set the size of the component after
     // you add any child components.
@@ -41,18 +46,63 @@ MainComponent::MainComponent()
         // Specify the number of input and output channels that we want to open
         setAudioChannels (2, 2);
     }
-
-
+    
+    
     menu_2.Undo = [this]() {
         undo.undo();
         
         addAndMakeVisible(&undo_label);
+        redo_label.setVisible(false);
+        undo_label.setVisible(true);
         };
 
     menu_2.Redo = [this]() {
         undo.redo();
+
+        addAndMakeVisible(&redo_label);
+        undo_label.setVisible(false);
+        redo_label.setVisible(true);
         };
 
+    menu_2.setDark = [this]() {
+        in_waveform.setAsDark();
+        out_waveform.setAsDark();
+        inAnalyse.setAsDark();
+        outAnalyse.setAsDark();
+        in_meterL.setAsDark();
+        out_meterL.setAsDark();
+        in_meterR.setAsDark();
+        out_meterR.setAsDark();
+        selected_button = juce::Colour::fromRGB(31, 88, 221);
+        controlButtonTheme(controlState);
+        setSliderlnf(sliderlnf_two);
+        current_theme = DARK;
+        repaint();
+        };
+
+    menu_2.setLight = [this]() {
+        in_waveform.setAsLight();
+        out_waveform.setAsLight();
+        inAnalyse.setAsLight();
+        outAnalyse.setAsLight();
+        in_meterL.setAsLight();
+        out_meterL.setAsLight();
+        in_meterR.setAsLight();
+        out_meterR.setAsLight();
+        selected_button = juce::Colours::darkcyan;
+        controlButtonTheme(controlState);
+        setSliderlnf(sliderlnf);
+        current_theme = LIGHT;
+        repaint();
+        };
+
+    menu_2.openPreset = [this]() {
+        pManage.loadPreset(menu_2.presetFile);
+        };
+
+    menu_2.savePreset = [this]() {
+        pManage.savePreset(menu_2.savedPresetFile);
+    };
     //startTimerHz(24);
     dspfunc.setTree(paramTree);
     formatManager.registerBasicFormats();
@@ -62,7 +112,6 @@ MainComponent::MainComponent()
     c_manager.setFirstCommandTarget(this);
     addKeyListener(c_manager.getKeyMappings());
     setWantsKeyboardFocus(true);
-    paramTree.setProperty(juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::SS_Toggle)} }, false, nullptr);
 
 
     addAndMakeVisible(output);
@@ -82,6 +131,8 @@ MainComponent::MainComponent()
     addAndMakeVisible(&inAnalyse);
     auto gain_range = juce::NormalisableRange<double>(-60, 6, .5);
     input_gain.setNormalisableRange(gain_range);
+    input_gain.setColour(juce::Slider::ColourIds::trackColourId, juce::Colours::white);
+    output_gain.setColour(juce::Slider::ColourIds::trackColourId, juce::Colours::white);
     addAndMakeVisible(&input_gain);
     inAnalyse.setVisible(false);
 
@@ -92,16 +143,7 @@ MainComponent::MainComponent()
     header_Frequency_Btn.onClick = [this]() {in_waveform.setVisible(false); out_waveform.setVisible(false); inAnalyse.setVisible(true); outAnalyse.setVisible(true); };
 
     //Controls
-    gateSliderComp.setLookAndFeel(&sliderlnf);
-    apCompressorSliderComp.setLookAndFeel(&sliderlnf);
-    lbCompressorSliderComp.setLookAndFeel(&sliderlnf);
-    mbCompressorSliderComp.setLookAndFeel(&sliderlnf);
-    hbCompressorSliderComp.setLookAndFeel(&sliderlnf);
-    input_gain.setLookAndFeel(&sliderlnf);
-    output_gain.setLookAndFeel(&sliderlnf);
-    freqComp.setLookAndFeel(&sliderlnf);
-    limSliderComp.setLookAndFeel(&sliderlnf);
-
+    setSliderlnf(sliderlnf);
     input_gain_label.setLookAndFeel(&labellnf);
     output_gain_label.setLookAndFeel(&labellnf);
     
@@ -160,15 +202,20 @@ MainComponent::MainComponent()
     custom.setRadioGroupId(PresetButtons);
 
     yt_button.onClick = [this]() { loadYoutube(); };
+    yt_button.setEnabled(false);
     addAndMakeVisible(&yt_button);
+
     pod_button.onClick = [this]() {loadYoutube(); };
+    pod_button.setEnabled(false);
         addAndMakeVisible(&pod_button);
         custom.onClick = [this]() {setCustom(); };
+        custom.setEnabled(false);
         addAndMakeVisible(&custom);
         
 
 
-
+    input_gain.onDragEnd = [this]() {undo.beginNewTransaction(); };
+    output_gain.onDragEnd = [this]() {undo.beginNewTransaction(); };
     LB.onClick = [this]() {multiStateChange(Display_LB); };
     MB.onClick = [this]() {multiStateChange(Display_MB); };
     HB.onClick = [this]() {multiStateChange(Display_HB); };
@@ -202,7 +249,8 @@ MainComponent::MainComponent()
     addAndMakeVisible(&limiter_x);
     
     //Default Controls State
-    Gate.setColour(juce::TextButton::buttonColourId, juce::Colours::darkcyan);
+    selected_button = juce::Colours::darkcyan;
+    Gate.setColour(juce::TextButton::buttonColourId, selected_button);
     APComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
     MBandComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
     Limiter.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
@@ -254,7 +302,9 @@ MainComponent::MainComponent()
     addAndMakeVisible(&out_meterR);
     addAndMakeVisible(&outAnalyse);
     addAndMakeVisible(&out_waveform);
-    output_gain.setNormalisableRange(gain_range);;
+    output_gain.setNormalisableRange(gain_range);
+    //silence_samples.setRange(64, 44100, std::pow(silence_samples.getValue));
+    //addAndMakeVisible(&silence_samples)
     addAndMakeVisible(&output_gain);
     outAnalyse.setVisible(false);
 
@@ -279,6 +329,16 @@ MainComponent::MainComponent()
     addAndMakeVisible(&SS);
     SS.setEnabled(false);
 
+    addAndMakeVisible(&ss_samples);
+    ss_samples.setVisible(false);
+    for (int i = 6; i <= std::log2(44100); ++i) {
+        ss_samples.addItem(juce::String(std::pow(2, i)), std::pow(2, i));
+    }
+
+    ss_samples.setSelectedId(64);
+
+    ss_samples.onChange = [this]() {undo.beginNewTransaction(); };
+
     ytpreset_save.onClick = [this] { pManage.savePreset("Youtube");   };
     //addAndMakeVisible(&ytpreset_save);
 
@@ -290,44 +350,17 @@ MainComponent::MainComponent()
 
     menu_2.FileUpdate = [this]() {
         i_file = menu_2.input_file;
-        auto* reader = formatManager.createReaderFor(i_file);
-
-        if (reader != nullptr)
-        {
-            auto duration = (float)reader->lengthInSamples / reader->sampleRate;               // [3]
-
-            if (duration < 18000) {
-                auto newSource = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
-                transportSource.stop();
-                transportSource.setSource(newSource.get(), 0, nullptr, reader->sampleRate);
-                in_waveform.setFile(i_file);
-                in_waveform.launchThread();
-                //in_waveform.info(new juce::FileInputSource(i_file));
-                
-                /*out_waveform.setFile(i_file);
-                out_waveform.set_as_output();
-                out_waveform.startThread();*/
-
-                PLAY.setEnabled(true);
-                SAVE.setEnabled(true);
-                STOP.setEnabled(false);
-                SS.setEnabled(true);
-                readerSource.reset(newSource.release());
-
-                yt_button.setToggleState(true, juce::dontSendNotification);
-                paramTree.setProperty(juce::Identifier{ Params::GetParams().at(Params::Names::Gain_Out) }, 0, nullptr);
-                loadYoutube();
-            }
-
-            else {
-                lengthAlert = std::make_unique<juce::AlertWindow>("ERROR", "Maximum file length is 5 hours", juce::MessageBoxIconType::WarningIcon, nullptr);
-
-                lengthAlert->showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "ERROR", "Maximum file length is 5 hours", "Ok", nullptr, nullptr);
-            }
-        }
+        in_waveform.local_file = menu_2.input_file;
+        openOperation(i_file);
         };
     menu_2.SaveFile = [this]() {
         saveButtonClicked();
+        };
+
+    in_waveform.openFile = [this]() {
+        i_file = in_waveform.local_file;
+        menu_2.input_file = in_waveform.local_file;
+        openOperation(i_file);
         };
 }
 
@@ -353,6 +386,47 @@ MainComponent::~MainComponent()
 
 }
 
+void MainComponent::openOperation(juce::File& file) {
+    auto* reader = formatManager.createReaderFor(file);
+
+    if (reader != nullptr)
+    {
+        auto duration = (float)reader->lengthInSamples / reader->sampleRate;               // [3]
+
+        if (duration < 18000) {
+            auto newSource = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
+            transportSource.stop();
+            transportSource.setSource(newSource.get(), 0, nullptr, reader->sampleRate);
+            in_waveform.setFile(file);
+            in_waveform.launchThread();
+            //in_waveform.info(new juce::FileInputSource(i_file));
+
+            /*out_waveform.setFile(i_file);
+            out_waveform.set_as_output();
+            out_waveform.startThread();*/
+
+            PLAY.setEnabled(true);
+            SAVE.setEnabled(true);
+            STOP.setEnabled(false);
+            SS.setEnabled(true);
+            readerSource.reset(newSource.release());
+
+            yt_button.setEnabled(true);
+            pod_button.setEnabled(true);
+            custom.setEnabled(true);
+            yt_button.setToggleState(true, juce::dontSendNotification);
+            paramTree.setProperty(juce::Identifier{ Params::GetParams().at(Params::Names::Gain_Out) }, 0, nullptr);
+            loadYoutube();
+            undo.clearUndoHistory();
+        }
+
+        else {
+            lengthAlert = std::make_unique<juce::AlertWindow>("ERROR", "Maximum file length is 5 hours", juce::MessageBoxIconType::WarningIcon, nullptr);
+
+            lengthAlert->showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "ERROR", "Maximum file length is 5 hours", "Ok", nullptr, nullptr);
+        }
+    }
+}
 //==============================================================================
 void MainComponent::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
 {
@@ -466,8 +540,20 @@ void MainComponent::paint (juce::Graphics& g)
 {
     
 
-    g.setGradientFill(bg_gradient);
-    g.fillAll();
+    switch(current_theme) {
+        case LIGHT:
+            g.setGradientFill(bg_gradient);
+            g.fillAll();
+            break;
+        case DARK:
+            g.setColour(juce::Colour::fromRGB(25, 25, 25));
+            g.fillAll();
+            break;
+        default:
+            break;
+    }
+    //
+    
     
 }
 
@@ -483,7 +569,8 @@ void MainComponent::resized()
     preset.setBounds(area.removeFromLeft(300));
     controls.setBounds(area);
 
-    undo_label.setBounds(menu_2.getLocalBounds().getCentreX(), menu_2.getLocalBounds().getCentreY(), 120, 20);
+    undo_label.setBounds(menu_2.getLocalBounds().getCentreX(), menu_2.getLocalBounds().getCentreY() - 10, 150, 20);
+    redo_label.setBounds(menu_2.getLocalBounds().getCentreX(), menu_2.getLocalBounds().getCentreY() - 10, 150, 20);
 
     //Input
     in_waveform.setBounds(input.getBounds().reduced(40));
@@ -608,8 +695,11 @@ void MainComponent::resized()
     STOP.setBounds(PLAY.getX(),PLAY.getBottom(), button_bounds.getWidth() / 2, button_bounds.getHeight() / 2);
     SS.setBounds(STOP.getRight(),PLAY.getBottom(), SAVE.getWidth() / 2, button_bounds.getHeight() / 2);
 
-    ytpreset_save.setBounds(SS.getRight(), SS.getY(), SS.getWidth() / 2, SS.getHeight());
-    podpreset_save.setBounds(ytpreset_save.getRight(), ytpreset_save.getY(), SS.getWidth() / 2, ytpreset_save.getHeight());
+    //ytpreset_save.setBounds(SS.getRight(), SS.getY(), SS.getWidth() / 2, SS.getHeight());
+    //podpreset_save.setBounds(ytpreset_save.getRight(), ytpreset_save.getY(), SS.getWidth() / 2, ytpreset_save.getHeight());
+
+    ss_samples.setBounds(SS.getRight(), SS.getY(), getLocalBounds().getRight() - SS.getRight(), SS.getHeight());
+    //ss_samples.setBounds(ytpreset_save.getBounds());
 }
 
 void MainComponent::playButtonClicked()
@@ -707,10 +797,7 @@ void MainComponent::changeControls(Controls newState) {
         switch (controlState)
         {
         case Display_Gate:
-            Gate.setColour(juce::TextButton::buttonColourId, juce::Colours::darkcyan);
-            APComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
-            MBandComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
-            Limiter.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            controlButtonTheme(controlState);
 
             gateSliderComp.setVisible(true);
             apCompressorSliderComp.setVisible(false);
@@ -730,10 +817,7 @@ void MainComponent::changeControls(Controls newState) {
             break;
 
         case Display_Allpass:
-            Gate.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
-            APComp.setColour(juce::TextButton::buttonColourId, juce::Colours::darkcyan);
-            MBandComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
-            Limiter.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            controlButtonTheme(controlState);
 
             gateSliderComp.setVisible(false);
             apCompressorSliderComp.setVisible(true);
@@ -754,10 +838,7 @@ void MainComponent::changeControls(Controls newState) {
             break;
 
         case Display_MultiBand:
-            Gate.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
-            APComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
-            MBandComp.setColour(juce::TextButton::buttonColourId, juce::Colours::darkcyan);
-            Limiter.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+            controlButtonTheme(controlState);
 
             gateSliderComp.setVisible(false);
             apCompressorSliderComp.setVisible(false);
@@ -778,10 +859,7 @@ void MainComponent::changeControls(Controls newState) {
 
 
         case Display_Limiter:
-            Gate.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
-            APComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
-            MBandComp.setColour(juce::TextButton::buttonColourId, juce::Colours::black);
-            Limiter.setColour(juce::TextButton::buttonColourId, juce::Colours::darkcyan);
+            controlButtonTheme(controlState);
 
             gateSliderComp.setVisible(false);
             apCompressorSliderComp.setVisible(false);
@@ -876,7 +954,10 @@ float MainComponent::get_out_RMSvalue(const int channel) const
 
 void MainComponent::updateToggleState(juce::Button* button)
 {
-    paramTree.setProperty(juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::SS_Toggle)} }, button->getToggleState(), nullptr);
+    if (SS.getToggleState())
+        ss_samples.setVisible(true);
+    else if (!SS.getToggleState())
+        ss_samples.setVisible(false);
 }
 
 void  MainComponent::bypassToggle(juce::Button* button) {
@@ -891,7 +972,7 @@ void  MainComponent::bypassToggle(juce::Button* button) {
 void MainComponent::loadYoutube() {
     if (yt_button.getToggleState()) {
         makeEverythingInVisible();
-        DBG("level" << (float)paramTree.getProperty(juce::Identifier{ Params::GetParams().at(Params::Names::Gain_In) }));
+        
         pManage.loadPreset("Youtube");
         if (!in_waveform.isThreadRunning()) {
             paramTree.setProperty(juce::Identifier{ Params::GetParams().at(Params::Names::Gain_In) }, input_peak, nullptr);

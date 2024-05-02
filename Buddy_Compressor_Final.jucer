@@ -4,6 +4,8 @@
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
   <MAINGROUP id="gGM5uQ" name="Buddy_Compressor">
     <GROUP id="{603FF16C-782C-061F-92F9-E1CA6FAA6C7C}" name="Source">
+      <FILE id="rjhIKQ" name="ComboBoxAttachment.h" compile="0" resource="0"
+            file="Source/ComboBoxAttachment.h"/>
       <FILE id="tAsX6m" name="Label_Attachment.h" compile="0" resource="0"
             file="Source/Label_Attachment.h"/>
       <FILE id="OcjsWI" name="Undo_Alert_Label.h" compile="0" resource="0"
@@ -58,6 +60,7 @@
             file="Source/MainComponent.cpp"/>
     </GROUP>
     <FILE id="vqeVz2" name="Label_LnF.h" compile="0" resource="0" file="Source/Label_LnF.h"/>
+    <FILE id="UduKT9" name="SIMDLinkWitz.h" compile="0" resource="0" file="Source/SIMDLinkWitz.h"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>

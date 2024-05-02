@@ -63,7 +63,9 @@ namespace Params
 
         Limiter_Threshold,
         Limiter_Release,
-        SS_Toggle
+        SS_Toggle,
+
+        Save_Samples
     };
 
     inline const std::map<Names, juce::String>& GetParams() {
@@ -107,8 +109,8 @@ namespace Params
             {Gate_Release, "Gate_Release"},
             {Limiter_Threshold, "Limiter_Threshold"},
             {Limiter_Release, "Limiter_Release"},
-            {SS_Toggle, "Silence_Slicer_Toggle"}
-
+            {SS_Toggle, "Silence_Slicer_Toggle"},
+            {Save_Samples, "Save_Sample_Count"}
         };
 
         return params;

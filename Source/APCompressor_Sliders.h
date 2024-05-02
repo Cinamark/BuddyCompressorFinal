@@ -17,12 +17,12 @@ class APCompressorSliders : public juce::Component
 {
 public:
     APCompressorSliders(const juce::ValueTree& v, juce::UndoManager* uMgr)
-        : ltree(v), undoMgr(*uMgr),
+        : ltree(v), undo_Mgr(*uMgr),
 
-        threshAttach(ltree, &thresh, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Threshold_AllPass)} }),
-        ratAttach(ltree, &ratio, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Ratio_AllPass)} }),
-        attAttach(ltree, &att, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Attack_AllPass)} }),
-        relAttach(ltree, &rel, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Release_AllPass)} })
+        threshAttach(ltree, &thresh, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Threshold_AllPass)} }, &undo_Mgr),
+        ratAttach(ltree, &ratio, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Ratio_AllPass)} }, & undo_Mgr),
+        attAttach(ltree, &att, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Attack_AllPass)} }, & undo_Mgr),
+        relAttach(ltree, &rel, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Release_AllPass)} }, & undo_Mgr)
     {
         thresh.setSliderStyle(juce::Slider::SliderStyle::Rotary);
         thresh.setValue(0);
@@ -46,6 +46,11 @@ public:
         rel.setValue(5);
         rel.setNormalisableRange(range);
 
+        thresh.onDragEnd = [this]() {undo_Mgr.beginNewTransaction(); };
+        ratio.onDragEnd = [this]() {undo_Mgr.beginNewTransaction(); };
+        att.onDragEnd = [this]() {undo_Mgr.beginNewTransaction(); };
+        rel.onDragEnd = [this]() {undo_Mgr.beginNewTransaction(); };
+
         addAndMakeVisible(&thresh);
         addAndMakeVisible(&ratio);
         addAndMakeVisible(&att);
@@ -67,6 +72,7 @@ public:
         flex.items.add(juce::FlexItem(rel).withFlex(1.f));
         flex.performLayout(bounds);
     }
+    juce::UndoManager& undo_Mgr;
     juce::ValueTree ltree;
 private:
     juce::Slider thresh, ratio, att, rel;
@@ -77,5 +83,5 @@ private:
     TreeSliderAttachment relAttach;
 
 
-    juce::UndoManager& undoMgr;
+    
 };

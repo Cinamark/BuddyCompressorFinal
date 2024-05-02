@@ -16,12 +16,12 @@ class HighBandCompSliders : public juce::Component
 {
 public:
     HighBandCompSliders(const juce::ValueTree& v, juce::UndoManager* uMgr)
-        : ltree(v), undoMgr(*uMgr),
+        : ltree(v), undo_Mgr(*uMgr),
 
-        threshAttach(ltree, &thresh, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Threshold_High_Band)} }),
-        ratAttach(ltree, &ratio, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Ratio_High_Band)} }),
-        attAttach(ltree, &att, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Attack_High_Band)} }),
-        relAttach(ltree, &rel, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Release_High_Band)} })
+        threshAttach(ltree, &thresh, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Threshold_High_Band)} }, & undo_Mgr),
+        ratAttach(ltree, &ratio, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Ratio_High_Band)} }, & undo_Mgr),
+        attAttach(ltree, &att, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Attack_High_Band)} }, & undo_Mgr),
+        relAttach(ltree, &rel, juce::Identifier{ juce::Identifier{ Params::GetParams().at(Params::Names::Release_High_Band)} }, & undo_Mgr)
     {
         thresh.setSliderStyle(juce::Slider::SliderStyle::Rotary);
         thresh.setValue(0);
@@ -49,6 +49,11 @@ public:
         rel.setValue(5);
         rel.setNormalisableRange(range);
 
+        thresh.onDragEnd = [this]() {undo_Mgr.beginNewTransaction(); };
+        ratio.onDragEnd = [this]() {undo_Mgr.beginNewTransaction(); };
+        att.onDragEnd = [this]() {undo_Mgr.beginNewTransaction(); };
+        rel.onDragEnd = [this]() {undo_Mgr.beginNewTransaction(); };
+
         addAndMakeVisible(&thresh);
         addAndMakeVisible(&ratio);
         addAndMakeVisible(&att);
@@ -70,6 +75,7 @@ public:
         flex.items.add(juce::FlexItem(rel).withFlex(1.f));
         flex.performLayout(bounds);
     }
+    juce::UndoManager& undo_Mgr;
     juce::ValueTree ltree;
 private:
     juce::Slider thresh, ratio, att, rel;
@@ -80,5 +86,5 @@ private:
     TreeSliderAttachment relAttach;
 
 
-    juce::UndoManager& undoMgr;
+    
 };
