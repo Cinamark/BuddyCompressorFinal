@@ -13,12 +13,12 @@ Buddy Compressor is a multiband compressor application made using C++ and JUCE. 
 ## Overview
 <img width="1919" height="1080" alt="image" src="https://github.com/user-attachments/assets/f8ca96bb-d775-4c31-9d39-6b081b819fa1" />
 
-<img width="844" height="636" alt="image" src="https://github.com/user-attachments/assets/1569699c-295e-4226-8788-f3d2e85f58d8" /><\br>
+<img width="844" height="636" alt="image" src="https://github.com/user-attachments/assets/1569699c-295e-4226-8788-f3d2e85f58d8" /><br>
 Block Diagram of the audio processing
 
 Files can be dragged and dropped into the top waveform section
 
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/00335d08-3e8b-4b4b-9837-e001893fa5f6" /><\br>
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/00335d08-3e8b-4b4b-9837-e001893fa5f6" /><br>
 App in use
 
 NOTE: Currently the presets for Youtube and Podcast have not been uploaded to this version of the repo, which means the noise gate defaults to 0db on startup. If there are audible drop outs when first opening, that's probably why, so in just switching to "custom" and adjusting the Gate db/bypassing the Gate will fix this
