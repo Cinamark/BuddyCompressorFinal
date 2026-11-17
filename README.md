@@ -21,7 +21,7 @@ Files can be dragged and dropped into the top waveform section
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/00335d08-3e8b-4b4b-9837-e001893fa5f6" /><br>
 App in use
 
-NOTE: Currently the presets for Youtube and Podcast have not been uploaded to this version of the repo, which means the noise gate defaults to 0db on startup. If there are audible drop outs when first opening, that's probably why, so in just switching to "custom" and adjusting the Gate db/bypassing the Gate will fix this
+NOTE: Currently the presets for Youtube and Podcast have not been uploaded to this version of the repo, which means the noise gate defaults to 0db on startup. If there are audible drop outs when first opening, that's probably why, so just switching to "Custom" and adjusting the Gate db/bypassing the Gate will fix this
 
 ## Building
 
